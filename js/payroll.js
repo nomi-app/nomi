@@ -552,19 +552,261 @@ function liquidarDesdeLiquido(opts){
 }
 
 
+// ════════════════════════════════════════════════════════════
+// PERSISTENCIA DE LIQUIDACIONES (Hito 3.B)
+// ════════════════════════════════════════════════════════════
+// Estructura de almacenamiento dentro del negocio:
+//
+//   biz.payrolls = {
+//     '2026-05': {
+//       cerrada:        false,
+//       fechaCerrado:   null,
+//       workers: {
+//         '<workerId>': { ...objeto que devuelve liquidar() },
+//         '<workerId>': { ... }
+//       }
+//     },
+//     '2026-04': { ... }
+//   }
+//
+// Reglas:
+//   - Guardar liquidación nueva: sin PIN.
+//   - Sobrescribir liquidación existente: con PIN (edita historial).
+//   - Eliminar liquidación: con PIN.
+//   - Cerrar/reabrir mes: con PIN.
+//   - Si el mes está cerrado, no se puede guardar ni eliminar
+//     hasta reabrirlo.
+//
+// API pública:
+//   savePayroll(liquidacion, onDone?)
+//   getPayroll(periodo, workerId)
+//   payrollExists(periodo, workerId)
+//   listPayrollsByMonth(periodo)
+//   listPayrollsByWorker(workerId)
+//   getMonthStatus(periodo)        — alimenta Pantalla 4.1
+//   deletePayroll(periodo, workerId, onDone?)
+//   closeMonth(periodo, onDone?)
+//   reopenMonth(periodo, onDone?)
+//   ensurePayrollsStorage(biz)
+
+
+// Migración lazy del almacenamiento.
+function ensurePayrollsStorage(biz){
+  if(!biz) return;
+  if(!biz.payrolls) biz.payrolls = {};
+}
+
+// Helper interno: obtiene o crea la entrada del mes.
+function _getOrCreateMonth(biz, periodo){
+  ensurePayrollsStorage(biz);
+  if(!biz.payrolls[periodo]){
+    biz.payrolls[periodo] = { cerrada: false, fechaCerrado: null, workers: {} };
+  } else {
+    // Reparar entradas legacy que no tengan la estructura completa
+    if(!biz.payrolls[periodo].workers) biz.payrolls[periodo].workers = {};
+    if(typeof biz.payrolls[periodo].cerrada !== 'boolean') biz.payrolls[periodo].cerrada = false;
+  }
+  return biz.payrolls[periodo];
+}
+
+// ¿Existe una liquidación guardada para ese trabajador en ese mes?
+function payrollExists(periodo, workerId){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  return !!(b && b.payrolls && b.payrolls[periodo] && b.payrolls[periodo].workers && b.payrolls[periodo].workers[workerId]);
+}
+
+// Devuelve la liquidación guardada o null.
+function getPayroll(periodo, workerId){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b || !b.payrolls || !b.payrolls[periodo] || !b.payrolls[periodo].workers) return null;
+  return b.payrolls[periodo].workers[workerId] || null;
+}
+
+// Guarda una liquidación. Si ya existe una para ese trabajador+mes, pide PIN.
+// liquidacion debe ser el objeto retornado por liquidar() — viene con
+// periodo y workerId adentro.
+function savePayroll(liquidacion, onDone){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b){ if(typeof toast === 'function') toast('Negocio no encontrado'); return; }
+  if(!liquidacion || !liquidacion.periodo || !liquidacion.workerId){
+    if(typeof toast === 'function') toast('Liquidación inválida (faltan datos)');
+    return;
+  }
+
+  var periodo = liquidacion.periodo;
+  var workerId = liquidacion.workerId;
+
+  // Si el mes está cerrado, bloquear.
+  if(b.payrolls && b.payrolls[periodo] && b.payrolls[periodo].cerrada){
+    if(typeof toast === 'function') toast('El mes está cerrado. Reábrelo para editar.');
+    return;
+  }
+
+  var doWrite = function(){
+    var month = _getOrCreateMonth(b, periodo);
+    var existed = !!month.workers[workerId];
+    liquidacion.fechaGuardado = new Date().toISOString();
+    month.workers[workerId] = liquidacion;
+    save(db);
+    if(typeof toast === 'function') toast(existed ? 'Liquidación actualizada' : 'Liquidación guardada');
+    if(onDone) onDone(true);
+  };
+
+  // Sobrescribir requiere PIN. Guardar nueva no.
+  if(payrollExists(periodo, workerId) && typeof withPIN === 'function'){
+    withPIN(doWrite);
+  } else {
+    doWrite();
+  }
+}
+
+// Elimina una liquidación. Siempre requiere PIN.
+function deletePayroll(periodo, workerId, onDone){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b) return;
+  if(!payrollExists(periodo, workerId)){
+    if(typeof toast === 'function') toast('No hay liquidación para eliminar');
+    return;
+  }
+  if(b.payrolls[periodo].cerrada){
+    if(typeof toast === 'function') toast('El mes está cerrado. Reábrelo para eliminar.');
+    return;
+  }
+  var doDelete = function(){
+    delete b.payrolls[periodo].workers[workerId];
+    save(db);
+    if(typeof toast === 'function') toast('Liquidación eliminada');
+    if(onDone) onDone(true);
+  };
+  if(typeof withPIN === 'function'){
+    withPIN(doDelete);
+  } else {
+    doDelete();
+  }
+}
+
+// Lista todas las liquidaciones guardadas para un mes.
+// Devuelve: [{ workerId, liquidacion }]
+function listPayrollsByMonth(periodo){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b || !b.payrolls || !b.payrolls[periodo] || !b.payrolls[periodo].workers) return [];
+  var workers = b.payrolls[periodo].workers;
+  return Object.keys(workers).map(function(wid){
+    return { workerId: wid, liquidacion: workers[wid] };
+  });
+}
+
+// Lista todas las liquidaciones de un trabajador (todos los meses, más recientes primero).
+// Devuelve: [{ periodo, liquidacion }]
+function listPayrollsByWorker(workerId){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b || !b.payrolls) return [];
+  var result = [];
+  Object.keys(b.payrolls).sort().reverse().forEach(function(periodo){
+    var month = b.payrolls[periodo];
+    var liq = month.workers && month.workers[workerId];
+    if(liq) result.push({ periodo: periodo, liquidacion: liq });
+  });
+  return result;
+}
+
+// Estado del mes — alimenta la Pantalla 4.1 (Lista del mes).
+// Devuelve la lista de TODOS los trabajadores del negocio con su estado
+// para el mes pedido, más totales y el estado de cierre.
+function getMonthStatus(periodo){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b) return null;
+  var workers = b.workers || [];
+  var monthData = (b.payrolls && b.payrolls[periodo]) || null;
+  var cerrada = !!(monthData && monthData.cerrada);
+
+  var items = workers.map(function(w){
+    var liq = monthData && monthData.workers && monthData.workers[w.id];
+    return {
+      worker: w,
+      liquidacion: liq || null,
+      status: liq ? 'liquidada' : 'pendiente',
+    };
+  });
+
+  var liquidadosCount = items.filter(function(i){ return i.status === 'liquidada'; }).length;
+
+  return {
+    periodo:       periodo,
+    cerrada:       cerrada,
+    fechaCerrado:  monthData ? monthData.fechaCerrado : null,
+    items:         items,
+    totales: {
+      trabajadores: workers.length,
+      liquidados:   liquidadosCount,
+      pendientes:   workers.length - liquidadosCount,
+    },
+  };
+}
+
+// Cerrar un mes — todas las liquidaciones del mes quedan protegidas.
+function closeMonth(periodo, onDone){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b) return;
+  var month = _getOrCreateMonth(b, periodo);
+  if(month.cerrada){
+    if(typeof toast === 'function') toast('El mes ya está cerrado');
+    return;
+  }
+  var doClose = function(){
+    month.cerrada = true;
+    month.fechaCerrado = new Date().toISOString();
+    save(db);
+    if(typeof toast === 'function') toast('Mes cerrado');
+    if(onDone) onDone(true);
+  };
+  if(typeof withPIN === 'function'){
+    withPIN(doClose);
+  } else {
+    doClose();
+  }
+}
+
+// Reabrir un mes cerrado.
+function reopenMonth(periodo, onDone){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!b || !b.payrolls || !b.payrolls[periodo]) return;
+  var month = b.payrolls[periodo];
+  if(!month.cerrada){
+    if(typeof toast === 'function') toast('El mes no está cerrado');
+    return;
+  }
+  var doReopen = function(){
+    month.cerrada = false;
+    month.fechaCerrado = null;
+    save(db);
+    if(typeof toast === 'function') toast('Mes reabierto');
+    if(onDone) onDone(true);
+  };
+  if(typeof withPIN === 'function'){
+    withPIN(doReopen);
+  } else {
+    doReopen();
+  }
+}
+
+
 // ════════════════════════════════
 // AUTO-MIGRACIÓN AL CARGAR
 // ════════════════════════════════
-// Asegura que todos los negocios existentes tengan los campos nuevos.
+// Asegura que todos los negocios existentes tengan los campos nuevos
+// (parámetros legales + almacenamiento de liquidaciones).
 // Se ejecuta una sola vez al cargar la app. Si no había cambios, no toca nada.
 
 (function _migrateAllOnLoad(){
   if(typeof db === 'undefined' || !db || !db.businesses) return;
   var dirty = false;
   db.businesses.forEach(function(b){
-    var before = JSON.stringify(b.params);
+    var before = JSON.stringify(b.params) + '|' + JSON.stringify(!!b.payrolls);
     ensurePayrollParams(b);
-    if(JSON.stringify(b.params) !== before) dirty = true;
+    ensurePayrollsStorage(b);
+    var after = JSON.stringify(b.params) + '|' + JSON.stringify(!!b.payrolls);
+    if(after !== before) dirty = true;
   });
   if(dirty && typeof save === 'function') save(db);
 })();
