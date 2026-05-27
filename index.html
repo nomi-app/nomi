@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Nomi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+</head>
+<body>
+
+<!-- ══ ONBOARDING ══ -->
+<div id="onboarding">
+
+  <!-- STEP 1 -->
+  <div class="ob-card" id="ob1">
+    <div class="ob-logo">
+      <div class="ob-logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <span class="ob-logo-name">nomi</span>
+    </div>
+    <div class="ob-progress">
+      <div class="ob-prog-step done"></div>
+      <div class="ob-prog-step"></div>
+      <div class="ob-prog-step"></div>
+    </div>
+    <div class="ob-eyebrow">Paso 1 de 3</div>
+    <div class="ob-title">Datos del negocio</div>
+
+    <div class="field">
+      <label class="label">Nombre del negocio <span style="color:var(--danger)">*</span></label>
+      <input class="input" type="text" id="ob-name" placeholder="Ej: Tienda Central" autocomplete="off"/>
+      <div class="error-msg" id="ob-name-err">Ingresa el nombre del negocio para continuar</div>
+    </div>
+    <div class="field">
+      <label class="label">RUT de la empresa <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+      <input class="input" type="text" id="ob-rut" placeholder="76.123.456-7" autocomplete="off" maxlength="12"/>
+      <div class="error-msg" id="ob-rut-err">RUT no válido — verifica el dígito verificador</div>
+      <div style="font-size:11px;color:var(--success);margin-top:4px;display:none" id="ob-rut-ok">✓ RUT válido</div>
+    </div>
+    <div class="field">
+      <label class="label">Rubro</label>
+      <select class="input" id="ob-rubro">
+        <option value="">Selecciona…</option>
+        <option value="retail">Retail / Tienda</option>
+        <option value="gastronomia">Gastronomía</option>
+        <option value="servicios">Servicios</option>
+        <option value="salud">Salud / Clínica</option>
+        <option value="construccion">Construcción</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+
+    <div class="ob-actions">
+      <button class="btn btn-primary btn-full btn-lg" onclick="ob_step1()">Continuar</button>
+    </div>
+    <div class="ob-restore">
+      ¿Tienes datos guardados? <a onclick="handleRestore()">Restaurar desde archivo</a>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="ob-card hidden" id="ob2">
+    <div class="ob-logo">
+      <div class="ob-logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <span class="ob-logo-name">nomi</span>
+    </div>
+    <div class="ob-progress">
+      <div class="ob-prog-step done"></div>
+      <div class="ob-prog-step done"></div>
+      <div class="ob-prog-step"></div>
+    </div>
+    <div class="ob-eyebrow">Paso 2 de 3</div>
+    <div class="ob-title">¿Qué necesitas activar?</div>
+
+    <div class="ob-mod on" id="mod-comisiones" data-mod="comisiones" onclick="toggleMod(this)">
+      <div class="ob-mod-info">
+        <div class="ob-mod-name">Comisiones por ventas</div>
+        <div class="ob-mod-desc">Con o sin metas de equipo</div>
+      </div>
+      <div class="ob-mod-check">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>
+
+    <div class="ob-mod" id="mod-vacaciones" data-mod="vacaciones" onclick="toggleMod(this)">
+      <div class="ob-mod-info">
+        <div class="ob-mod-name">Control de vacaciones</div>
+        <div class="ob-mod-desc">Días acumulados y usados</div>
+      </div>
+      <div class="ob-mod-check">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <div class="field">
+        <label class="label">Modalidad de gratificación</label>
+        <select class="input" id="ob-grat">
+          <option value="mensual">Mensual anticipada (25% con tope IMM)</option>
+          <option value="anual">Anual (30% de remuneraciones)</option>
+          <option value="incluida">Incluida en el sueldo base</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ob-actions">
+      <button class="btn btn-secondary btn-lg" onclick="goOb(1)">Volver</button>
+      <button class="btn btn-primary btn-full btn-lg" onclick="goOb(3)">Continuar</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="ob-card hidden" id="ob3">
+    <div class="ob-logo">
+      <div class="ob-logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <span class="ob-logo-name">nomi</span>
+    </div>
+    <div class="ob-progress">
+      <div class="ob-prog-step done"></div>
+      <div class="ob-prog-step done"></div>
+      <div class="ob-prog-step done"></div>
+    </div>
+    <div class="ob-eyebrow">Paso 3 de 3</div>
+    <div class="ob-title">Parámetros legales</div>
+
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Valores precargados con la legislación vigente. Puedes editarlos cuando cambie la ley.</p>
+
+    <div class="ob-param-row">
+      <span class="ob-param-label">IMM vigente</span>
+      <input class="ob-param-input" type="number" id="ob-imm" value="500000"/>
+    </div>
+    <div class="ob-param-row">
+      <span class="ob-param-label">Tope imponible</span>
+      <input class="ob-param-input" type="number" id="ob-tope" value="2971285"/>
+    </div>
+    <div class="ob-param-row">
+      <span class="ob-param-label">UF del mes</span>
+      <input class="ob-param-input" type="number" id="ob-uf" value="37500"/>
+    </div>
+
+    <div class="ob-accordion" id="afp-accordion">
+      <div class="ob-accordion-trigger" onclick="toggleAfp()">
+        <span class="ob-accordion-label">AFP y seguro de cesantía</span>
+        <span class="ob-accordion-arrow">▾</span>
+      </div>
+      <div class="ob-accordion-body">
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">AFP Habitat (%)</span>
+          <input class="ob-param-input" type="number" id="afp-habitat" value="10.58" step="0.01"/>
+        </div>
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">AFP Capital (%)</span>
+          <input class="ob-param-input" type="number" id="afp-capital" value="10.44" step="0.01"/>
+        </div>
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">AFP Modelo (%)</span>
+          <input class="ob-param-input" type="number" id="afp-modelo" value="10.58" step="0.01"/>
+        </div>
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">AFP Provida (%)</span>
+          <input class="ob-param-input" type="number" id="afp-provida" value="10.77" step="0.01"/>
+        </div>
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">AFP Cuprum (%)</span>
+          <input class="ob-param-input" type="number" id="afp-cuprum" value="10.58" step="0.01"/>
+        </div>
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">AFP PlanVital (%)</span>
+          <input class="ob-param-input" type="number" id="afp-planvital" value="10.57" step="0.01"/>
+        </div>
+        <div style="height:1px;background:var(--border);margin:6px 0"></div>
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">Cesantía indef. (%)</span>
+          <input class="ob-param-input" type="number" id="ces-indef" value="0.6" step="0.01"/>
+        </div>
+        <div class="ob-param-row" style="background:transparent;border:none;padding:4px 0">
+          <span class="ob-param-label">Cesantía plazo fijo (%)</span>
+          <input class="ob-param-input" type="number" id="ces-fijo" value="3.0" step="0.01"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-actions">
+      <button class="btn btn-secondary btn-lg" onclick="goOb(2)">Volver</button>
+      <button class="btn btn-primary btn-full btn-lg" onclick="finishOb()">Crear negocio</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <header class="header">
+    <div class="header-logo">
+      <div class="header-logo-mark">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <span class="header-logo-name">nomi</span>
+    </div>
+    <div class="header-sep"></div>
+
+    <div class="biz-selector">
+      <button class="biz-btn" id="bizBtn" onclick="toggleBizDrop()">
+        <span class="biz-btn-name" id="bizName">—</span>
+        <span class="biz-btn-arrow">▾</span>
+      </button>
+      <div class="biz-drop" id="bizDrop">
+        <div id="bizList"></div>
+        <div class="biz-drop-sep"></div>
+        <div class="biz-drop-item biz-drop-add" onclick="startNewBiz()">
+          <span class="biz-drop-check"></span>
+          + Agregar negocio
+        </div>
+      </div>
+    </div>
+
+    <div class="header-space"></div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Cambiar tema">☀</button>
+  </header>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-section">
+        <div class="nav-item active" data-page="inicio" onclick="go('inicio')">
+          <span class="nav-icon">◈</span> Inicio
+        </div>
+        <div class="nav-item" data-page="trabajadores" onclick="go('trabajadores')">
+          <span class="nav-icon">👤</span> Trabajadores
+        </div>
+        <div class="nav-item" data-page="remuneraciones" onclick="go('remuneraciones')">
+          <span class="nav-icon">📄</span> Remuneraciones
+        </div>
+        <div class="nav-item hidden" id="nav-comisiones" data-page="comisiones" onclick="go('comisiones')">
+          <span class="nav-icon">💰</span> Comisiones
+        </div>
+        <div class="nav-item hidden" id="nav-vacaciones" data-page="vacaciones" onclick="go('vacaciones')">
+          <span class="nav-icon">🌿</span> Vacaciones
+        </div>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="nav-item" data-page="config" onclick="go('config')">
+          <span class="nav-icon">⚙</span> Configuración
+        </div>
+      </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- INICIO -->
+      <div class="page active" id="page-inicio">
+        <div class="page-head">
+          <div class="page-eyebrow" id="dash-month">—</div>
+          <div class="page-title" id="dash-greeting">Bienvenido</div>
+          <div class="page-sub" id="dash-biz">—</div>
+        </div>
+        <div class="page-body">
+          <div class="dash-kpis">
+            <div class="kpi-card">
+              <div class="kpi-label">Trabajadores activos</div>
+              <div class="kpi-value" id="kpi-workers">0</div>
+              <div class="kpi-sub">registrados</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Liquidaciones del mes</div>
+              <div class="kpi-value gold">Pendientes</div>
+              <div class="kpi-sub">sin liquidaciones</div>
+            </div>
+            <div class="kpi-card hidden" id="kpi-com-card">
+              <div class="kpi-label">Comisión estimada</div>
+              <div class="kpi-value accent">—</div>
+              <div class="kpi-sub">sin ventas ingresadas</div>
+            </div>
+          </div>
+
+          <div class="dash-panels">
+            <div class="panel">
+              <div class="panel-head">
+                <span class="panel-title">Pendientes del mes</span>
+              </div>
+              <div class="panel-body">
+                <div class="pitem" onclick="go('remuneraciones')">
+                  <div class="pitem-dot dot-gold"></div>
+                  <span class="pitem-text">Liquidar sueldos del mes</span>
+                  <span class="pitem-arrow">›</span>
+                </div>
+                <div class="pitem hidden" id="pend-com" onclick="go('comisiones')">
+                  <div class="pitem-dot dot-accent"></div>
+                  <span class="pitem-text">Ingresar ventas del mes</span>
+                  <span class="pitem-arrow">›</span>
+                </div>
+                <div class="pitem" onclick="go('trabajadores')">
+                  <div class="pitem-dot dot-success"></div>
+                  <span class="pitem-text">Revisar fichas de trabajadores</span>
+                  <span class="pitem-arrow">›</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head">
+                <span class="panel-title">Último mes cerrado</span>
+              </div>
+              <div class="panel-body">
+                <div class="stat-row">
+                  <span class="stat-label">Período</span>
+                  <span class="stat-value">Abril 2026</span>
+                </div>
+                <div class="stat-row">
+                  <span class="stat-label">Liquidaciones</span>
+                  <span class="stat-value">—</span>
+                </div>
+                <div class="stat-row hidden" id="stat-ventas">
+                  <span class="stat-label">Ventas del equipo</span>
+                  <span class="stat-value">—</span>
+                </div>
+                <div class="stat-row hidden" id="stat-com">
+                  <span class="stat-label">Comisiones pagadas</span>
+                  <span class="stat-value accent">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TRABAJADORES — LISTA -->
+      <div class="page" id="page-trabajadores">
+        <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div>
+            <div class="page-eyebrow">Módulo 2</div>
+            <div class="page-title">Trabajadores</div>
+            <div class="page-sub" id="w-count-sub">Sin trabajadores registrados</div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:28px;flex-shrink:0" onclick="openWorkerForm()">+ Agregar</button>
+        </div>
+        <div class="page-body">
+          <div id="w-empty" class="placeholder">
+            <div class="placeholder-icon">👤</div>
+            <div class="placeholder-title">Sin trabajadores aún</div>
+            <div class="placeholder-sub">Agrega el primer trabajador para comenzar</div>
+            <button class="btn btn-primary" style="margin-top:8px" onclick="openWorkerForm()">+ Agregar trabajador</button>
+          </div>
+          <div id="w-list" style="display:none;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- TRABAJADORES — FICHA (panel lateral) -->
+      <div id="w-panel" style="display:none;position:fixed;inset:0;z-index:80;display:none">
+        <!-- Backdrop -->
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px)" onclick="closeWorkerPanel()"></div>
+        <!-- Drawer -->
+        <div id="w-drawer" style="
+          position:absolute;right:0;top:0;bottom:0;
+          width:min(520px,100vw);
+          background:var(--bg2);
+          border-left:1px solid var(--border);
+          display:flex;flex-direction:column;
+          box-shadow:-8px 0 32px rgba(0,0,0,.12);
+          animation:slideIn .25s ease;
+        ">
+          <!-- Drawer header -->
+          <div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0">
+            <div style="flex:1">
+              <div style="font-size:11px;font-weight:500;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px" id="wd-eyebrow">Nuevo trabajador</div>
+              <div style="font-size:16px;font-weight:600;color:var(--text)" id="wd-title">Datos del trabajador</div>
+            </div>
+            <button class="btn btn-ghost btn-icon" onclick="closeWorkerPanel()" title="Cerrar">✕</button>
+          </div>
+
+          <!-- Drawer body — scrollable -->
+          <div style="flex:1;overflow-y:auto;padding:20px">
+
+            <!-- SECCIÓN: Datos personales -->
+            <div class="wd-section">
+              <div class="wd-section-title">Datos personales</div>
+              <div class="field">
+                <label class="label">Nombre completo <span style="color:var(--danger)">*</span></label>
+                <input class="input" type="text" id="wf-nombre" placeholder="Ej: Ana González" autocomplete="off"/>
+                <div class="error-msg" id="wf-nombre-err">El nombre es obligatorio</div>
+              </div>
+              <div class="field">
+                <label class="label">RUT <span style="color:var(--danger)">*</span></label>
+                <input class="input" type="text" id="wf-rut" placeholder="12.345.678-9" maxlength="12" autocomplete="off"/>
+                <div class="error-msg" id="wf-rut-err">RUT no válido — verifica el dígito verificador</div>
+                <div style="font-size:11px;color:var(--success);margin-top:4px;display:none" id="wf-rut-ok">✓ RUT válido</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="field">
+                  <label class="label">WhatsApp <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+                  <input class="input" type="tel" id="wf-wa" placeholder="+56 9 1234 5678"/>
+                </div>
+                <div class="field">
+                  <label class="label">Email <span style="color:var(--text3);font-weight:400">(opcional)</span></label>
+                  <input class="input" type="email" id="wf-email" placeholder="ana@correo.com"/>
+                </div>
+              </div>
+            </div>
+
+            <div class="wd-sep"></div>
+
+            <!-- SECCIÓN: Contrato -->
+            <div class="wd-section">
+              <div class="wd-section-title">Contrato</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="field">
+                  <label class="label">Cargo <span style="color:var(--danger)">*</span></label>
+                  <input class="input" type="text" id="wf-cargo" placeholder="Ej: Vendedor"/>
+                  <div class="error-msg" id="wf-cargo-err">El cargo es obligatorio</div>
+                </div>
+                <div class="field">
+                  <label class="label">Inicio contrato <span style="color:var(--danger)">*</span></label>
+                  <input class="input" type="date" id="wf-inicio"/>
+                  <div class="error-msg" id="wf-inicio-err">Ingresa la fecha de inicio</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="field">
+                  <label class="label">Tipo de contrato <span style="color:var(--danger)">*</span></label>
+                  <select class="input" id="wf-contrato" onchange="onContratoChange()">
+                    <option value="" disabled selected>Selecciona tipo…</option>
+                    <option value="plazo_fijo">Plazo fijo</option>
+                    <option value="indefinido">Indefinido</option>
+                    <option value="honorarios">Honorarios</option>
+                  </select>
+                  <div class="error-msg" id="wf-contrato-err">Selecciona el tipo de contrato</div>
+                </div>
+                <div class="field">
+                  <label class="label">Jornada <span style="color:var(--danger)">*</span></label>
+                  <select class="input" id="wf-jornada" onchange="onJornadaChange()">
+                    <option value="" disabled selected>Selecciona jornada…</option>
+                    <option value="completa">Completa (45h/sem)</option>
+                    <option value="parcial">Parcial</option>
+                  </select>
+                  <div class="error-msg" id="wf-jornada-err">Selecciona la jornada</div>
+                </div>
+              </div>
+              <div class="field hidden" id="wf-horas-field">
+                <label class="label">Horas semanales</label>
+                <input class="input" type="number" id="wf-horas" placeholder="Ej: 30" min="1" max="44"/>
+              </div>
+
+              <!-- Sueldo base -->
+              <div class="field">
+                <label class="label">Sueldo base <span style="color:var(--danger)">*</span></label>
+                <div style="display:flex;gap:6px;margin-bottom:6px">
+                  <button class="btn btn-sm" id="sw-bruto-btn" onclick="setSueldoMode('bruto')" style="background:var(--accent);color:#fff;border-color:var(--accent)">Ingresar bruto</button>
+                  <button class="btn btn-sm btn-secondary" id="sw-liquido-btn" onclick="setSueldoMode('liquido')">Calcular desde líquido</button>
+                </div>
+                <!-- Modo bruto -->
+                <div id="sw-bruto">
+                  <div style="position:relative">
+                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
+                    <input class="input" type="number" id="wf-sueldo" placeholder="500.000" style="padding-left:26px" oninput="checkIMM()"/>
+                  </div>
+                  <div style="font-size:11px;color:var(--danger);margin-top:4px;display:none" id="imm-warn">
+                    ⚠ Este monto está bajo el IMM vigente (<span id="imm-val">$500.000</span>). Verifica que corresponde a una jornada proporcional u otra excepción legal.
+                  </div>
+                </div>
+                <!-- Modo desde líquido -->
+                <div id="sw-liquido" style="display:none">
+                  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px">
+                    <div class="field" style="margin-bottom:10px">
+                      <label class="label">Líquido deseado ($)</label>
+                      <div style="position:relative">
+                        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
+                        <input class="input" type="number" id="wf-liquido" placeholder="450.000" style="padding-left:26px;background:var(--bg2)" oninput="calcDesdeliquido()"/>
+                      </div>
+                    </div>
+                    <div id="liq-result" style="display:none">
+                      <div style="height:1px;background:var(--border);margin-bottom:10px"></div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+                        <div style="color:var(--text2)">Sueldo bruto estimado</div>
+                        <div style="font-weight:600;color:var(--text);text-align:right;font-family:var(--mono)" id="liq-bruto">—</div>
+                        <div style="color:var(--text2)">Gratificación</div>
+                        <div style="font-weight:500;color:var(--text);text-align:right;font-family:var(--mono)" id="liq-grat">—</div>
+                        <div style="color:var(--text2)">AFP estimada</div>
+                        <div style="color:var(--text2);text-align:right;font-family:var(--mono)" id="liq-afp">—</div>
+                        <div style="color:var(--text2)">Salud estimada</div>
+                        <div style="color:var(--text2);text-align:right;font-family:var(--mono)" id="liq-salud">—</div>
+                        <div style="color:var(--text2)">Cesantía</div>
+                        <div style="color:var(--text2);text-align:right;font-family:var(--mono)" id="liq-ces">—</div>
+                      </div>
+                      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-size:12px;font-weight:600;color:var(--text2)">Líquido resultante</span>
+                        <span style="font-size:14px;font-weight:700;color:var(--success);font-family:var(--mono)" id="liq-neto">—</span>
+                      </div>
+                      <button class="btn btn-secondary btn-sm btn-full" style="margin-top:10px" onclick="usarBrutoSugerido()">Usar este bruto →</button>
+                    </div>
+                    <div id="liq-warn" style="display:none;font-size:11px;color:var(--danger);margin-top:6px"></div>
+                  </div>
+                </div>
+                <div class="error-msg" id="wf-sueldo-err">El sueldo base es obligatorio</div>
+              </div>
+            </div>
+
+            <div class="wd-sep"></div>
+
+            <!-- SECCIÓN: Previsión -->
+            <div class="wd-section" id="wf-prev-section">
+              <div class="wd-section-title">Previsión</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="field">
+                  <label class="label">AFP <span style="color:var(--danger)">*</span></label>
+                  <select class="input" id="wf-afp">
+                    <option value="" disabled selected>Selecciona AFP…</option>
+                    <option value="Habitat">Habitat</option>
+                    <option value="Capital">Capital</option>
+                    <option value="Modelo">Modelo</option>
+                    <option value="Provida">Provida</option>
+                    <option value="Cuprum">Cuprum</option>
+                    <option value="PlanVital">PlanVital</option>
+                  </select>
+                  <div class="error-msg" id="wf-afp-err">Selecciona la AFP</div>
+                </div>
+                <div class="field">
+                  <label class="label">Salud <span style="color:var(--danger)">*</span></label>
+                  <select class="input" id="wf-salud" onchange="onSaludChange()">
+                    <option value="" disabled selected>Selecciona previsión…</option>
+                    <option value="fonasa">Fonasa (7%)</option>
+                    <option value="isapre">Isapre</option>
+                  </select>
+                  <div class="error-msg" id="wf-salud-err">Selecciona la previsión de salud</div>
+                </div>
+              </div>
+              <!-- Isapre fields -->
+              <div id="wf-isapre-fields" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-top:-4px;margin-bottom:14px">
+                <div class="field" style="margin-bottom:10px">
+                  <label class="label">Nombre de la isapre</label>
+                  <input class="input" type="text" id="wf-isapre-nombre" placeholder="Ej: Banmédica" style="background:var(--bg2)"/>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <div class="field" style="margin-bottom:0">
+                    <label class="label">Moneda del plan</label>
+                    <select class="input" id="wf-isapre-moneda" onchange="onIsapreMonedaChange()" style="background:var(--bg2)">
+                      <option value="pesos">Pesos ($)</option>
+                      <option value="uf">UF</option>
+                    </select>
+                  </div>
+                  <div class="field" style="margin-bottom:0">
+                    <label class="label" id="wf-isapre-monto-label">Monto del plan ($)</label>
+                    <div style="position:relative">
+                      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);pointer-events:none" id="wf-isapre-sign">$</span>
+                      <input class="input" type="number" id="wf-isapre-monto" placeholder="0" style="padding-left:26px;background:var(--bg2)"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="field" id="wf-ces-field">
+                <label class="label">Seguro de cesantía</label>
+                <input class="input" id="wf-ces-display" readonly style="color:var(--text3);cursor:default"/>
+              </div>
+            </div>
+
+            <!-- Previsión deshabilitada para honorarios -->
+            <div id="wf-prev-nota" style="display:none;background:var(--gold-dim);border:1px solid rgba(217,119,6,.2);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--gold);margin-bottom:14px">
+              Los trabajadores a honorarios no tienen descuentos previsionales obligatorios a cargo del empleador. Los emiten ellos mismos mediante boleta de honorarios.
+            </div>
+
+            <div class="wd-sep" id="wf-sep-grat"></div>
+
+            <!-- SECCIÓN: Gratificación -->
+            <div class="wd-section" id="wf-grat-section">
+              <div class="wd-section-title">Gratificación</div>
+              <div class="field">
+                <label class="label">Modalidad</label>
+                <select class="input" id="wf-grat">
+                  <option value="heredar">Heredar del negocio</option>
+                  <option value="mensual">Mensual anticipada (25% con tope IMM)</option>
+                  <option value="anual">Anual (30% de remuneraciones)</option>
+                  <option value="incluida">Incluida en el sueldo base</option>
+                  <option value="no_aplica">No aplica</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="wd-sep"></div>
+
+            <!-- SECCIÓN: Comisiones -->
+            <div class="wd-section" id="wf-com-section">
+              <div class="wd-section-title">Rol de comisiones</div>
+              <div class="field">
+                <label class="label">Rol</label>
+                <select class="input" id="wf-rol" onchange="onRolChange()">
+                  <option value="sin_comisiones">Sin comisiones</option>
+                  <option value="vendedor">Vendedor</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="supervisor_dual">Supervisor dual (también vende)</option>
+                </select>
+              </div>
+              <div id="wf-template-field" style="display:none">
+                <div class="field">
+                  <label class="label">Template de comisiones</label>
+                  <select class="input" id="wf-template">
+                    <option value="t1">Template 1 — Tienda sin metas</option>
+                    <option value="t2">Template 2 — Tienda con metas</option>
+                    <option value="t3">Template 3 — Equipo por objetivos</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Drawer footer -->
+          <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;background:var(--bg2)">
+            <button class="btn btn-secondary" onclick="closeWorkerPanel()" style="flex:0 0 auto">Cancelar</button>
+            <button class="btn btn-primary btn-full" id="wd-save-btn" onclick="saveWorker()">Guardar trabajador</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REMUNERACIONES -->
+      <div class="page" id="page-remuneraciones">
+        <div class="page-head">
+          <div class="page-eyebrow">Módulo 3</div>
+          <div class="page-title">Remuneraciones</div>
+          <div class="page-sub">Liquidaciones · Bruto ↔ Líquido · Exportación</div>
+        </div>
+        <div class="page-body">
+          <div class="placeholder">
+            <div class="placeholder-icon">📄</div>
+            <div class="placeholder-title">Módulo en construcción</div>
+            <div class="placeholder-sub">Liquidación completa, cálculo inverso, impuesto único y exportación PDF</div>
+            <span class="badge">Hito 3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMISIONES -->
+      <div class="page" id="page-comisiones">
+        <div class="page-head">
+          <div class="page-eyebrow">Módulo 4</div>
+          <div class="page-title">Comisiones</div>
+          <div class="page-sub">Templates · Metas · Distribución del equipo</div>
+        </div>
+        <div class="page-body">
+          <div class="placeholder">
+            <div class="placeholder-icon">💰</div>
+            <div class="placeholder-title">Módulo en construcción</div>
+            <div class="placeholder-sub">3 templates · Motor de proyección · Simulador · Desglose por vendedor</div>
+            <span class="badge">Hito 4</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- VACACIONES -->
+      <div class="page" id="page-vacaciones">
+        <div class="page-head">
+          <div class="page-eyebrow">Módulo 5</div>
+          <div class="page-title">Vacaciones</div>
+          <div class="page-sub">Días acumulados · Historial · Saldo disponible</div>
+        </div>
+        <div class="page-body">
+          <div class="placeholder">
+            <div class="placeholder-icon">🌿</div>
+            <div class="placeholder-title">Módulo en construcción</div>
+            <div class="placeholder-sub">Cálculo por antigüedad, períodos tomados y saldo disponible</div>
+            <span class="badge">Hito 5</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONFIG -->
+      <div class="page" id="page-config">
+        <div class="page-head">
+          <div class="page-eyebrow">Ajustes</div>
+          <div class="page-title">Configuración</div>
+          <div class="page-sub" id="cfg-sub">—</div>
+        </div>
+        <div class="page-body">
+
+          <!-- General -->
+          <div class="cfg-section">
+            <div class="cfg-section-title">General</div>
+            <div class="cfg-row" onclick="toast('Próximamente')">
+              <div class="cfg-row-icon">🏢</div>
+              <div class="cfg-row-text">
+                <div class="cfg-row-label">Datos del negocio</div>
+                <div class="cfg-row-desc">Nombre, RUT, rubro</div>
+              </div>
+              <span class="cfg-row-arrow">›</span>
+            </div>
+            <div class="cfg-row" onclick="toast('Próximamente')">
+              <div class="cfg-row-icon">🧩</div>
+              <div class="cfg-row-text">
+                <div class="cfg-row-label">Módulos activos</div>
+                <div class="cfg-row-desc">Comisiones · Vacaciones · Gratificación</div>
+              </div>
+              <span class="cfg-row-arrow">›</span>
+            </div>
+          </div>
+
+          <!-- Parámetros legales — EDITABLES REALES -->
+          <div class="cfg-section">
+            <div class="cfg-section-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Parámetros legales</span>
+              <span id="cfg-unsaved-badge" style="display:none;font-size:10px;font-weight:500;color:var(--gold);letter-spacing:.04em;text-transform:none">● Cambios sin guardar</span>
+            </div>
+
+            <!-- IMM / Tope / UF -->
+            <div style="padding:16px">
+              <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Valores base</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cfg-base-grid">
+                <div class="field" style="margin:0">
+                  <label class="label">IMM vigente ($)</label>
+                  <input class="input" type="number" id="cfg-imm" oninput="markParamsDirty()"/>
+                </div>
+                <div class="field" style="margin:0">
+                  <label class="label">Tope imponible ($)</label>
+                  <input class="input" type="number" id="cfg-tope" oninput="markParamsDirty()"/>
+                </div>
+                <div class="field" style="margin:0">
+                  <label class="label">UF del mes ($)</label>
+                  <input class="input" type="number" id="cfg-uf" oninput="markParamsDirty()"/>
+                </div>
+              </div>
+            </div>
+
+            <div style="height:1px;background:var(--border)"></div>
+
+            <!-- AFP Tasas -->
+            <div style="padding:16px">
+              <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Tasas AFP (%)</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="cfg-afp-grid"></div>
+            </div>
+
+            <div style="height:1px;background:var(--border)"></div>
+
+            <!-- Cesantía -->
+            <div style="padding:16px">
+              <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Seguro de cesantía — parte trabajador (%)</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="field" style="margin:0">
+                  <label class="label">Contrato indefinido</label>
+                  <input class="input" type="number" step="0.01" id="cfg-ces-indef" oninput="markParamsDirty()"/>
+                </div>
+                <div class="field" style="margin:0">
+                  <label class="label">Plazo fijo</label>
+                  <input class="input" type="number" step="0.01" id="cfg-ces-fijo" oninput="markParamsDirty()"/>
+                </div>
+              </div>
+            </div>
+
+            <!-- Guardar parámetros -->
+            <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <div style="font-size:11px;color:var(--text3);flex:1">Los cambios se aplican a todos los cálculos del negocio.</div>
+              <div style="display:flex;gap:8px;flex-shrink:0">
+                <button class="btn btn-secondary btn-sm" id="cfg-discard-btn" onclick="discardParams()" style="display:none">Descartar</button>
+                <button class="btn btn-primary btn-sm" id="cfg-save-btn" onclick="requestPinForParams()" disabled style="opacity:.4;cursor:not-allowed">Guardar cambios</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PIN de seguridad -->
+          <div class="cfg-section">
+            <div class="cfg-section-title">Seguridad</div>
+            <div class="cfg-row" onclick="openPinSetup()">
+              <div class="cfg-row-icon">🔒</div>
+              <div class="cfg-row-text">
+                <div class="cfg-row-label" id="cfg-pin-label">Configurar PIN</div>
+                <div class="cfg-row-desc" id="cfg-pin-desc">Protege acciones sensibles con un PIN de 4 dígitos</div>
+              </div>
+              <span class="cfg-row-arrow">›</span>
+            </div>
+          </div>
+
+          <!-- Datos y privacidad -->
+          <div class="cfg-section">
+            <div class="cfg-section-title">Datos y privacidad</div>
+            <div class="cfg-row" onclick="exportData()">
+              <div class="cfg-row-icon">💾</div>
+              <div class="cfg-row-text">
+                <div class="cfg-row-label">Exportar todos mis datos</div>
+                <div class="cfg-row-desc">Descarga un archivo de respaldo</div>
+              </div>
+              <span class="cfg-row-arrow">›</span>
+            </div>
+            <div class="cfg-row danger" onclick="requestPinForDelete()">
+              <div class="cfg-row-icon">🗑</div>
+              <div class="cfg-row-text">
+                <div class="cfg-row-label">Eliminar este negocio</div>
+                <div class="cfg-row-desc">Esta acción no se puede deshacer</div>
+              </div>
+              <span class="cfg-row-arrow">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODAL DE CONFIRMACIÓN -->
+<div id="confirm-overlay" style="
+  display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(3px);
+  align-items:center;justify-content:center;padding:20px;
+  animation:fadeIn .15s ease;
+">
+  <div style="
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:28px 24px 20px;
+    max-width:360px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.2);
+    animation:fadeUp .2s ease;
+  ">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+      <div style="
+        width:36px;height:36px;border-radius:50%;
+        background:var(--danger-dim);
+        display:flex;align-items:center;justify-content:center;
+        flex-shrink:0;font-size:16px;
+      ">⚠</div>
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px" id="confirm-title">¿Eliminar trabajador?</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.5" id="confirm-body">Esta acción es irreversible. Una vez eliminado, no podrás recuperar los datos de este trabajador.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-action-btn" style="background:var(--danger);color:#fff;border-color:var(--danger)">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE PIN -->
+<div id="pin-overlay" style="
+  display:none;position:fixed;inset:0;z-index:400;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;padding:20px;
+">
+  <div style="
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:28px 24px;
+    max-width:340px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.25);
+    animation:fadeUp .2s ease;
+    text-align:center;
+  ">
+    <div id="pin-icon" style="font-size:28px;margin-bottom:12px">🔒</div>
+    <div id="pin-title" style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px">Ingresa tu PIN</div>
+    <div id="pin-subtitle" style="font-size:12px;color:var(--text3);margin-bottom:20px">Ingresa el PIN de 4 dígitos para continuar</div>
+
+    <!-- PIN dots -->
+    <div style="display:flex;justify-content:center;gap:12px;margin-bottom:20px" id="pin-dots">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+
+    <!-- Error message -->
+    <div id="pin-error" style="display:none;font-size:12px;color:var(--danger);margin-bottom:12px;min-height:16px">PIN incorrecto. Intenta nuevamente.</div>
+
+    <!-- Numpad -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:220px;margin:0 auto 20px">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key pin-key-ghost" onclick="pinClear()">⌫</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key pin-key-ghost" onclick="closePinModal()">✕</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/core.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/workers.js"></script>
+</body>
+</html>
