@@ -70,7 +70,7 @@ body{
 input,button,select,textarea{font-family:inherit;font-size:inherit}
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
-input[type=number]{-moz-appearance:textfield}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
@@ -794,3 +794,18 @@ select.input{cursor:pointer;-webkit-appearance:none;appearance:none;
 .rem-card-amount{font-size:14px;font-weight:600;color:var(--text);font-family:var(--mono)}
 .rem-card-amount.pending{color:var(--text3)}
 .rem-card-amount-label{font-size:10px;color:var(--text3);margin-top:-2px}
+
+/* ── Selector de modo de salario (3.C-bis) ── */
+.salmodo-group{display:flex;flex-direction:column;gap:8px}
+.salmodo-opt{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;cursor:pointer;transition:var(--transition)}
+.salmodo-opt:hover{border-color:var(--border2)}
+.salmodo-opt.active{border-color:var(--accent);background:var(--accent-dim)}
+.salmodo-opt-head{display:flex;align-items:center;gap:8px}
+.salmodo-radio{width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;transition:var(--transition)}
+.salmodo-opt.active .salmodo-radio{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 5px,transparent 6px)}
+.salmodo-label{font-size:13px;font-weight:600;color:var(--text);flex:1}
+.salmodo-info{width:18px;height:18px;border-radius:50%;background:var(--bg3);color:var(--text2);font-size:11px;font-style:italic;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:var(--transition)}
+.salmodo-info:hover{background:var(--accent);color:#fff}
+.salmodo-breve{font-size:11px;color:var(--text3);margin-top:5px;margin-left:24px;line-height:1.4}
+.salmodo-breve.warn{color:var(--gold)}
+.salmodo-card-note{font-size:11px;color:var(--gold);margin-top:6px;line-height:1.4}

@@ -138,6 +138,7 @@ function renderRemuneraciones(){
         '<div class="rem-card-info">' +
           '<div class="w-name">' + esc(w.nombre) + '</div>' +
           '<div class="w-meta">' + esc(w.cargo || '') + (w.cargo ? ' · ' : '') + 'AFP ' + esc(w.afp || '—') + '</div>' +
+          ((typeof salarioNotaHTML === 'function') ? salarioNotaHTML(w, biz) : '') +
         '</div>' +
         '<div class="rem-card-right">' +
           montoLinea +

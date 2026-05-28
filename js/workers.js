@@ -51,6 +51,14 @@ function openWorkerForm(workerId = null){
     document.getElementById('wf-isapre-monto').value = w.isapreMonto || '';
     document.getElementById('wf-grat').value = w.gratificacion || 'heredar';
     document.getElementById('wf-rol').value = w.rol || 'sin_comisiones';
+    renderSalarioModoSelector(w.salarioModo || 'anclado');
+    if((w.salarioModo || 'anclado') === 'anclado' && typeof pisoLegal === 'function'){
+      var pisoActual = pisoLegal(w, biz);
+      if((w.sueldoBase || 0) < pisoActual){
+        document.getElementById('wf-sueldo').value = pisoActual;
+      }
+    }
+    renderFichaNota(w);
     document.getElementById('wf-template').value = w.template || 't1';
     setSueldoMode('bruto');
     onContratoChange();
@@ -89,6 +97,7 @@ function clearWorkerForm(){
   document.getElementById('wf-afp').value = '';
   document.getElementById('wf-grat').value = 'heredar';
   document.getElementById('wf-rol').value = 'sin_comisiones';
+  renderSalarioModoSelector('anclado');
   document.getElementById('wf-template').value = 't1';
   document.getElementById('wf-isapre-moneda').value = 'pesos';
   // Clear errors
@@ -368,7 +377,15 @@ function saveWorker(){
     contrato,
     jornada,
     horasSemanales: parseFloat(document.getElementById('wf-horas').value) || 45,
-    sueldoBase: sueldo,
+    sueldoBase: (function(){
+      var modo = getSalarioModoSel();
+      if(modo === 'anclado' && typeof pisoLegal === 'function'){
+        var pisoW = pisoLegal({ jornada: jornada, horasSemanales: parseFloat(document.getElementById('wf-horas').value) || 45 }, getBiz());
+        return Math.max(sueldo, pisoW);
+      }
+      return sueldo;
+    })(),
+    salarioModo: getSalarioModoSel(),
     afp:   isHon ? null : afp,
     salud: isHon ? null : salud,
     isapreNombre: document.getElementById('wf-isapre-nombre').value.trim(),
@@ -466,11 +483,13 @@ function renderWorkerList(){
     // Use data attribute to store the worker id for editing
     card.setAttribute('data-wid', w.id);
 
+    var notaCard = (typeof salarioNotaHTML === 'function') ? salarioNotaHTML(w, biz) : '';
     card.innerHTML =
       '<div class="w-avatar">' + initials + '</div>' +
       '<div class="w-info" style="pointer-events:none">' +
         '<div class="w-name">' + esc(w.nombre) + '</div>' +
         '<div class="w-meta">' + esc(w.cargo) + ' · AFP ' + esc(w.afp || '—') + ' · ' + saludLabel + ' · ' + contratoLabel + '</div>' +
+        notaCard +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">' +
         badge +
@@ -518,3 +537,21 @@ document.getElementById('wf-sueldo')?.addEventListener('input', function(){
     initApp();
   }
 })();
+
+// Nota de advertencia bajo el selector de salario en la ficha
+function renderFichaNota(worker){
+  var cont = document.getElementById('wf-salmodo');
+  if(!cont) return;
+  // Eliminar nota previa si existe
+  var prev = document.getElementById('wf-salmodo-nota');
+  if(prev) prev.remove();
+  if(typeof notaSueldo !== 'function') return;
+  var nota = notaSueldo(worker, getBiz());
+  if(!nota) return;
+  var div = document.createElement('div');
+  div.id = 'wf-salmodo-nota';
+  div.className = 'salmodo-card-note';
+  div.style.marginTop = '8px';
+  div.textContent = '⚠ ' + nota.texto;
+  cont.appendChild(div);
+}
