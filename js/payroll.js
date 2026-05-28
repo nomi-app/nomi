@@ -35,6 +35,7 @@ var PAYROLL_DEFAULTS = {
   utm:        70588,    // UTM mayo 2026 — SII
   topeUF:     90.0,     // Tope imponible AFP/salud — Superintendencia de Pensiones (vigente desde febrero 2026)
   topeCesUF:  135.2,    // Tope imponible seguro de cesantía
+  jornadaCompleta: 42,  // Horas semanales de jornada completa legal. Ley 21.561: 44 (2024), 42 (abr 2026), 40 (abr 2028). Base del cálculo proporcional del mínimo (art. 44 CT). Editable en Configuración.
 
   // Cesantía: parte trabajador (%). El empleador paga aparte (3% en plazo fijo, 2.4% en indefinido).
   cesantia: {
@@ -85,8 +86,16 @@ function ensurePayrollParams(biz){
   if(p.utm == null)               p.utm = PAYROLL_DEFAULTS.utm;
   if(p.topeUF == null)            p.topeUF = PAYROLL_DEFAULTS.topeUF;
   if(p.topeCesUF == null)         p.topeCesUF = PAYROLL_DEFAULTS.topeCesUF;
+  if(p.jornadaCompleta == null)   p.jornadaCompleta = PAYROLL_DEFAULTS.jornadaCompleta;
   if(p.honorariosRetencion == null) p.honorariosRetencion = PAYROLL_DEFAULTS.honorariosRetencion;
   if(!p.impuestoTablaUTM)         p.impuestoTablaUTM = JSON.parse(JSON.stringify(PAYROLL_DEFAULTS.impuestoTablaUTM));
+
+  // Migrar salarioModo en trabajadores existentes: default 'anclado' (protegido por el piso mínimo)
+  if(biz.workers && biz.workers.length){
+    biz.workers.forEach(function(w){
+      if(!w.salarioModo) w.salarioModo = 'anclado';
+    });
+  }
 }
 
 
@@ -121,6 +130,77 @@ function _cesRate(contrato, cesRates){
 function _nowPeriodo(){
   var d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+
+// ════════════════════════════════
+// SUELDO MÍNIMO — piso legal y modos de salario (art. 44 CT)
+// ════════════════════════════════
+// Modos (worker.salarioModo):
+//   'anclado'     — sigue el piso legal: effective = max(pactado, piso). Default.
+//                   Sube cuando el mínimo lo supera, nunca baja (art. 5 CT, irrenunciabilidad).
+//   'fijo'        — monto fijo. No se normaliza. Si queda bajo el piso, se avisa pero no se toca.
+//   'bajo_minimo' — declarado bajo el mínimo por el dueño. No se toca. Aviso permanente.
+
+// Piso legal mensual para el trabajador, según jornada.
+// Jornada completa: IMM. Jornada parcial: IMM × horas / jornadaCompleta (art. 44 inc. 3).
+function pisoLegal(worker, biz){
+  var p = (biz && biz.params) || {};
+  var imm = p.imm || PAYROLL_DEFAULTS.imm;
+  var jc  = p.jornadaCompleta || PAYROLL_DEFAULTS.jornadaCompleta;
+  if(worker && worker.jornada === 'parcial' && worker.horasSemanales){
+    var ratio = worker.horasSemanales / jc;
+    if(ratio > 1) ratio = 1; // nunca exceder el IMM completo
+    return Math.round(imm * ratio);
+  }
+  return imm;
+}
+
+// Sueldo base efectivo que usa el motor. Aplica la regla del modo de salario.
+function sueldoBaseEfectivo(worker, biz){
+  var pactado = worker.sueldoBase || 0;
+  var modo = worker.salarioModo || 'anclado';
+  if(modo === 'anclado'){
+    return Math.max(pactado, pisoLegal(worker, biz));
+  }
+  // 'fijo' y 'bajo_minimo' usan el monto pactado tal cual
+  return pactado;
+}
+
+// ¿El sueldo del trabajador está bajo el piso legal?
+function bajoMinimo(worker, biz){
+  return (worker.sueldoBase || 0) < pisoLegal(worker, biz);
+}
+
+// Nota de advertencia para mostrar en ficha y tarjeta (NUNCA en la liquidación).
+// Devuelve null si no hay nada que advertir.
+function notaSueldo(worker, biz){
+  var modo = worker.salarioModo || 'anclado';
+  if(modo === 'bajo_minimo'){
+    return { tipo: 'bajo_minimo', texto: 'Sueldo inferior al mínimo legal. Configurado manualmente por el responsable.' };
+  }
+  if(modo === 'fijo' && bajoMinimo(worker, biz)){
+    return { tipo: 'fijo_bajo', texto: 'Este sueldo fijo quedó bajo el mínimo vigente tras el último reajuste.' };
+  }
+  return null;
+}
+
+// Aplica las reglas del mínimo a todos los trabajadores al cambiar IMM o jornada.
+// Sólo normaliza los 'anclado' que quedaron bajo el piso (hacia arriba, nunca baja).
+// Devuelve un reporte de cambios para informar al dueño.
+function aplicarReglasIMM(biz){
+  if(!biz || !biz.workers) return { normalizados: [] };
+  var normalizados = [];
+  biz.workers.forEach(function(w){
+    if((w.salarioModo || 'anclado') !== 'anclado') return; // fijo y bajo_minimo no se tocan
+    var piso = pisoLegal(w, biz);
+    var actual = w.sueldoBase || 0;
+    if(actual < piso){
+      normalizados.push({ nombre: w.nombre, de: actual, a: piso });
+      w.sueldoBase = piso;
+    }
+  });
+  return { normalizados: normalizados };
 }
 
 
@@ -222,7 +302,7 @@ function liquidar(opts){
   var afpRate    = (p.afpRates && p.afpRates[worker.afp]) || 0;
   var honRetRate = p.honorariosRetencion != null ? p.honorariosRetencion : PAYROLL_DEFAULTS.honorariosRetencion;
 
-  var sueldoBase        = opts.sueldoBase != null ? opts.sueldoBase : (worker.sueldoBase || 0);
+  var sueldoBase        = opts.sueldoBase != null ? opts.sueldoBase : sueldoBaseEfectivo(worker, biz);
   var comisiones        = opts.comisiones || 0;
   var otrosImponibles   = opts.otrosImponibles || 0;
   var otrosNoImponibles = opts.otrosNoImponibles || 0;

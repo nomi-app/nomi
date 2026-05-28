@@ -200,11 +200,13 @@ function saveParams(){
   var imm  = parseFloat(document.getElementById('cfg-imm').value);
   var tope = parseFloat(document.getElementById('cfg-tope').value);
   var uf   = parseFloat(document.getElementById('cfg-uf').value);
+  var jc   = parseFloat(document.getElementById('cfg-jornada').value);
   var ci   = parseFloat(document.getElementById('cfg-ces-indef').value);
   var cf   = parseFloat(document.getElementById('cfg-ces-fijo').value);
   if(imm)  biz.params.imm  = imm;
   if(tope) biz.params.tope = tope;
   if(uf)   biz.params.uf   = uf;
+  if(jc)   biz.params.jornadaCompleta = jc;
   biz.params.cesantia = { indefinido: ci || 0.6, fijo: cf || 3.0 };
   var rates = biz.params.afpRates || {};
   Object.keys(rates).forEach(function(name){
@@ -216,7 +218,25 @@ function saveParams(){
   refreshAfpSelector();
   snapshotParams();
   resetParamsDirty();
-  toast('Parámetros guardados correctamente');
+// Aplicar reglas del mínimo a los trabajadores anclados
+  if(typeof aplicarReglasIMM === 'function'){
+    var rep = aplicarReglasIMM(biz);
+    save(db);
+    if(rep.normalizados.length > 0){
+      var nombres = rep.normalizados.map(function(x){ return x.nombre; }).join(', ');
+      showConfirmModal(
+        'Sueldos normalizados al nuevo mínimo',
+        'Se ajustaron ' + rep.normalizados.length + ' trabajador(es) anclados al mínimo que quedaban bajo el nuevo valor: ' + nombres + '.',
+        function(){ closeConfirmModal(); }
+      );
+      var ab = document.getElementById('confirm-action-btn');
+      if(ab) ab.textContent = 'Entendido';
+    } else {
+      toast('Parámetros guardados correctamente');
+    }
+  } else {
+    toast('Parámetros guardados correctamente');
+  }
 }
 
 // ── CONFIG render ──
@@ -228,6 +248,7 @@ function renderCfg(){
   document.getElementById('cfg-imm').value   = p.imm   || 500000;
   document.getElementById('cfg-tope').value  = p.tope  || 2971285;
   document.getElementById('cfg-uf').value    = p.uf    || 37500;
+  document.getElementById('cfg-jornada').value = p.jornadaCompleta || 42;
   document.getElementById('cfg-ces-indef').value = p.cesantia ? p.cesantia.indefinido : 0.6;
   document.getElementById('cfg-ces-fijo').value  = p.cesantia ? p.cesantia.fijo       : 3.0;
 

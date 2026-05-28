@@ -711,7 +711,7 @@
             <!-- IMM / Tope / UF -->
             <div style="padding:16px">
               <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Valores base</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="cfg-base-grid">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px" id="cfg-base-grid">
                 <div class="field" style="margin:0">
                   <label class="label">IMM vigente ($)</label>
                   <input class="input" type="number" id="cfg-imm" oninput="markParamsDirty()"/>
@@ -723,6 +723,10 @@
                 <div class="field" style="margin:0">
                   <label class="label">UF del mes ($)</label>
                   <input class="input" type="number" id="cfg-uf" oninput="markParamsDirty()"/>
+                </div>
+                <div class="field" style="margin:0">
+                  <label class="label">Jornada completa (hrs)</label>
+                  <input class="input" type="number" step="1" id="cfg-jornada" oninput="markParamsDirty()"/>
                 </div>
               </div>
             </div>
