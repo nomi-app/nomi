@@ -809,3 +809,37 @@ select.input{cursor:pointer;-webkit-appearance:none;appearance:none;
 .salmodo-breve{font-size:11px;color:var(--text3);margin-top:5px;margin-left:24px;line-height:1.4}
 .salmodo-breve.warn{color:var(--gold)}
 .salmodo-card-note{font-size:11px;color:var(--gold);margin-top:6px;line-height:1.4}
+
+/* ── Calculadora de liquidación (3.D) ── */
+.lq-section{margin-bottom:6px}
+.lq-section-title{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px}
+.lq-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;color:var(--text)}
+.lq-row.lq-sub{padding:2px 0;font-size:11px;color:var(--text3)}
+.lq-row-static{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg3);border-radius:var(--radius-sm);font-size:13px;color:var(--text)}
+.lq-row-total{font-weight:600;border-top:1px solid var(--border);background:transparent;padding:12px 0 0}
+.lq-amount{font-family:var(--mono);font-weight:500}
+.lq-amount.lq-neg{color:var(--danger)}
+.lq-row.lq-total-row{border-top:1px solid var(--border);margin-top:8px;padding-top:12px;font-weight:600}
+.lq-noimp-lbl{font-size:11px;color:var(--text3);display:block;margin-bottom:3px}
+.lq-noimp-peso{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3);pointer-events:none}
+.lq-noimp-field input[type=number]{padding-left:22px;font-size:13px}
+.lq-noimp-field input[type=text]{font-size:12px}
+.lq-liquido-box{background:var(--success-dim);border:1px solid var(--success);border-radius:var(--radius);padding:18px 20px;text-align:center;margin-top:18px}
+.lq-liquido-label{font-size:11px;color:var(--success);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px}
+.lq-liquido-monto{font-size:30px;font-weight:700;color:var(--success);font-family:var(--mono);line-height:1}
+
+/* Desglose paso a paso */
+.lqd-paso{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.lqd-paso:last-child{border-bottom:none}
+.lqd-paso.lqd-total{border-top:2px solid var(--text);border-bottom:none;margin-top:8px;padding-top:14px;font-weight:700}
+.lqd-titulo{font-size:13px;font-weight:500;color:var(--text)}
+.lqd-detalle{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.4}
+.lqd-monto{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);flex-shrink:0;text-align:right;min-width:110px}
+.lqd-monto.lqd-neg{color:var(--danger)}
+.lqd-monto.lqd-pos{color:var(--text)}
+.lqd-monto.lqd-cero{color:var(--text3);font-weight:400}
+.lqd-paso.lqd-total .lqd-monto{font-size:18px;color:var(--success)}
+
+/* Filas dinámicas de "Otros" no imponibles */
+.lq-otros-row{display:flex;gap:6px;align-items:center}
+.lq-otros-row input[type=number]{padding-left:22px;font-size:13px}

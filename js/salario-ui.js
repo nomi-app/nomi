@@ -99,6 +99,7 @@ function getSalarioModoSel(){
 // ── Modal informativo (i) ──
 function openSalarioInfo(key){
   var m = SALARIO_MODOS[key];
+  if(!m){ m = INFO_MODALES[key]; }
   if(!m) return;
   document.getElementById('salinfo-title').textContent = m.titulo;
   document.getElementById('salinfo-body').innerHTML = m.cuerpo();
@@ -115,4 +116,174 @@ function salarioNotaHTML(worker, biz){
   var nota = notaSueldo(worker, biz);
   if(!nota) return '';
   return '<div class="salmodo-card-note">⚠ ' + nota.texto + '</div>';
+}
+
+
+// ════════════════════════════════════════════════════════════
+// PASE B — SELECTORES DE CESANTÍA Y GRATIFICACIÓN
+// ════════════════════════════════════════════════════════════
+
+var _cesantiaModoSel = 'legal';
+var _gratBaseSel     = 'base_mas_comisiones';
+
+// Modales informativos para cesantía y gratificación
+var INFO_MODALES = {
+  cesantia_legal: {
+    titulo: 'Seguro de cesantía según la ley',
+    cuerpo: function(){
+      return '<p>Aplica el descuento del Seguro de Cesantía según lo establecido en la <strong>Ley N° 19.728</strong>.</p>' +
+        '<p style="margin-top:12px"><strong>Porcentajes vigentes:</strong></p>' +
+        '<ul style="margin:6px 0 0 18px;padding:0">' +
+          '<li style="margin-bottom:6px"><strong>Contrato indefinido:</strong> trabajador 0,6% · empleador 2,4% (total 3%).</li>' +
+          '<li style="margin-bottom:6px"><strong>Plazo fijo:</strong> empleador 3% · trabajador no aporta.</li>' +
+          '<li style="margin-bottom:6px"><strong>Honorarios:</strong> no aplica (no hay relación laboral dependiente).</li>' +
+        '</ul>' +
+        '<p style="margin-top:12px">El descuento del trabajador se calcula sobre el sueldo imponible, con un tope mayor al de AFP y salud (135,2 UF). El monto va a la cuenta individual y al fondo solidario del trabajador.</p>';
+    },
+  },
+  cesantia_no_descuenta: {
+    titulo: 'Sin descuento de seguro de cesantía',
+    cuerpo: function(){
+      return '<p>Has declarado que a este trabajador no se le descuenta el seguro de cesantía, contrario a lo dispuesto por la ley.</p>' +
+        '<p style="margin-top:12px"><strong>Qué implica:</strong></p>' +
+        '<ul style="margin:6px 0 0 18px;padding:0">' +
+          '<li style="margin-bottom:6px">Nomi no aplicará el descuento de cesantía en las liquidaciones de este trabajador.</li>' +
+          '<li style="margin-bottom:6px">La advertencia será visible en la ficha y en la tarjeta del trabajador, para tu control interno. No aparecerá en las liquidaciones.</li>' +
+        '</ul>' +
+        '<p style="margin-top:12px"><strong>Marco legal:</strong> la <strong>Ley N° 19.728</strong> establece el Seguro Obligatorio de Cesantía. Para contratos indefinidos, el trabajador aporta 0,6% del imponible y el empleador 2,4%. No cumplir con la cotización puede acarrear multas, reclamos administrativos y demandas laborales.</p>' +
+        '<p style="margin-top:12px"><strong>Responsabilidad:</strong> esta configuración es una decisión exclusiva del responsable del negocio. Nomi es una herramienta de cálculo y registro; no asesora ni valida la legalidad de los acuerdos. Ante cualquier duda, consulta con un contador o asesor laboral.</p>';
+    },
+  },
+  grat_base_mas_comisiones: {
+    titulo: 'Gratificación sobre base ampliada',
+    cuerpo: function(){
+      return '<p>La gratificación mensual se calcula sobre el <strong>sueldo base + comisiones + otros haberes imponibles</strong> del mes.</p>' +
+        '<p style="margin-top:12px"><strong>Fórmula:</strong> 25% de (sueldo base + comisiones + otros imponibles), con tope legal de 4,75 IMM anuales / 12 al mes (art. 50 del Código del Trabajo).</p>' +
+        '<p style="margin-top:12px">Es la modalidad <strong>más beneficiosa</strong> para el trabajador y la más defendible legalmente. Se usa habitualmente cuando el contrato no especifica lo contrario o cuando se pacta explícitamente esta base.</p>' +
+        '<p style="margin-top:12px">Si el contrato establece que la gratificación se calcula sólo sobre el sueldo base, usa la opción "Sólo sueldo base".</p>';
+    },
+  },
+  grat_solo_base: {
+    titulo: 'Gratificación sólo sobre sueldo base',
+    cuerpo: function(){
+      return '<p>La gratificación mensual se calcula <strong>únicamente sobre el sueldo base</strong>, sin considerar comisiones ni otros haberes imponibles.</p>' +
+        '<p style="margin-top:12px"><strong>Fórmula:</strong> 25% del sueldo base, con tope legal de 4,75 IMM anuales / 12 al mes (art. 50 del Código del Trabajo).</p>' +
+        '<p style="margin-top:12px">Es <strong>menos beneficiosa</strong> para el trabajador que la base ampliada. Sólo debería usarse cuando el contrato de trabajo así lo establece explícitamente.</p>' +
+        '<p style="margin-top:12px"><strong>Verifica</strong> que esta modalidad esté pactada en el contrato individual del trabajador antes de aplicarla.</p>';
+    },
+  },
+};
+
+
+// ── Selector de cesantía ──
+function renderCesantiaModoSelector(modo){
+  _cesantiaModoSel = modo || 'legal';
+  var cont = document.getElementById('wf-cesmodo');
+  if(!cont) return;
+  var opts = [
+    { key: 'legal',         label: 'Según la ley vigente',           breve: 'Descuenta cesantía conforme a la Ley 19.728.',                   info: 'cesantia_legal' },
+    { key: 'no_descuenta',  label: 'No se descuenta (declarado)',    breve: '⚠ El seguro de cesantía no se descuenta. Configurado manualmente por el responsable.', info: 'cesantia_no_descuenta', warn: true },
+  ];
+  cont.innerHTML = '<label class="label">Seguro de cesantía</label>' + _renderModoOpts(opts, _cesantiaModoSel, 'selectCesantiaModo');
+}
+function selectCesantiaModo(key){
+  _cesantiaModoSel = key;
+  renderCesantiaModoSelector(key);
+}
+function getCesantiaModoSel(){ return _cesantiaModoSel || 'legal'; }
+
+
+// ── Selector de base de gratificación ──
+function renderGratBaseSelector(modo){
+  _gratBaseSel = modo || 'base_mas_comisiones';
+  var cont = document.getElementById('wf-gratbase');
+  if(!cont) return;
+  var opts = [
+    { key: 'base_mas_comisiones', label: 'Sueldo base + comisiones + otros imponibles', breve: 'Más beneficiosa para el trabajador. Base habitual.', info: 'grat_base_mas_comisiones' },
+    { key: 'solo_base',           label: 'Sólo sueldo base',                            breve: 'Sólo si el contrato lo establece explícitamente.',   info: 'grat_solo_base' },
+  ];
+  cont.innerHTML = '<label class="label">Base de cálculo de gratificación</label>' + _renderModoOpts(opts, _gratBaseSel, 'selectGratBase');
+}
+function selectGratBase(key){
+  _gratBaseSel = key;
+  renderGratBaseSelector(key);
+}
+function getGratBaseSel(){ return _gratBaseSel || 'base_mas_comisiones'; }
+
+
+// Renderizado genérico de un grupo de opciones (reutilizable)
+function _renderModoOpts(opts, current, onSelectName){
+  var html = '<div class="salmodo-group">';
+  opts.forEach(function(m){
+    var active = m.key === current;
+    html +=
+      '<div class="salmodo-opt' + (active ? ' active' : '') + '" data-modo="' + m.key + '" onclick="' + onSelectName + '(\'' + m.key + '\')">' +
+        '<div class="salmodo-opt-head">' +
+          '<span class="salmodo-radio"></span>' +
+          '<span class="salmodo-label">' + m.label + '</span>' +
+          '<span class="salmodo-info" onclick="event.stopPropagation();openSalarioInfo(\'' + m.info + '\')" title="Más información">i</span>' +
+        '</div>' +
+        '<div class="salmodo-breve' + (m.warn ? ' warn' : '') + '">' + m.breve + '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+
+// ── HABERES RECURRENTES ──
+// Estado en memoria del editor; se persiste en worker.haberesRecurrentes al guardar.
+var _haberesRecurrentes = [];
+
+function renderHaberesRecurrentes(arr){
+  _haberesRecurrentes = Array.isArray(arr) ? arr.slice() : [];
+  _drawHaberesRecurrentes();
+}
+
+function _drawHaberesRecurrentes(){
+  var cont = document.getElementById('wf-haberes-rec-rows');
+  if(!cont) return;
+  var html = '';
+  _haberesRecurrentes.forEach(function(row, idx){
+    html +=
+      '<div class="lq-otros-row" data-idx="' + idx + '">' +
+        '<input class="input" type="text" placeholder="Etiqueta" value="' + esc(row.label || '') + '" oninput="hrecUpdateLabel(' + idx + ', this.value)" style="font-size:12px;flex:1"/>' +
+        '<div style="position:relative;flex:0 0 130px">' +
+          '<span class="lq-noimp-peso">$</span>' +
+          '<input class="input" type="number" placeholder="0" value="' + (row.monto || '') + '" oninput="hrecUpdateMonto(' + idx + ', this.value)"/>' +
+        '</div>' +
+        '<button class="btn btn-ghost btn-icon btn-sm" onclick="hrecEliminar(' + idx + ')" title="Eliminar" style="color:var(--danger);flex-shrink:0">✕</button>' +
+      '</div>';
+  });
+  cont.innerHTML = html;
+}
+
+function hrecAgregar(){
+  _haberesRecurrentes.push({ label: '', monto: 0 });
+  _drawHaberesRecurrentes();
+}
+function hrecEliminar(idx){
+  _haberesRecurrentes.splice(idx, 1);
+  _drawHaberesRecurrentes();
+}
+function hrecUpdateLabel(idx, val){
+  if(_haberesRecurrentes[idx]) _haberesRecurrentes[idx].label = val;
+}
+function hrecUpdateMonto(idx, val){
+  if(_haberesRecurrentes[idx]) _haberesRecurrentes[idx].monto = parseFloat(val) || 0;
+}
+function getHaberesRecurrentes(){
+  // Filtrar vacíos
+  return _haberesRecurrentes
+    .map(function(r){ return { label: (r.label || '').trim(), monto: parseFloat(r.monto) || 0 }; })
+    .filter(function(r){ return r.label && r.monto > 0; });
+}
+
+
+// ── Notas adicionales para tarjetas (cesantía no descontada) ──
+function cesantiaNotaHTML(worker){
+  if((worker.cesantiaModo || 'legal') === 'no_descuenta'){
+    return '<div class="salmodo-card-note">⚠ Cesantía no descontada (declarado por el responsable).</div>';
+  }
+  return '';
 }

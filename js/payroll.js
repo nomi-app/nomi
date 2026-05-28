@@ -90,10 +90,13 @@ function ensurePayrollParams(biz){
   if(p.honorariosRetencion == null) p.honorariosRetencion = PAYROLL_DEFAULTS.honorariosRetencion;
   if(!p.impuestoTablaUTM)         p.impuestoTablaUTM = JSON.parse(JSON.stringify(PAYROLL_DEFAULTS.impuestoTablaUTM));
 
-  // Migrar salarioModo en trabajadores existentes: default 'anclado' (protegido por el piso mínimo)
+  // Migrar campos de cada trabajador
   if(biz.workers && biz.workers.length){
     biz.workers.forEach(function(w){
-      if(!w.salarioModo) w.salarioModo = 'anclado';
+      if(!w.salarioModo)         w.salarioModo = 'anclado';
+      if(!w.cesantiaModo)        w.cesantiaModo = 'legal';
+      if(!w.gratBaseModo)        w.gratBaseModo = 'base_mas_comisiones';
+      if(!Array.isArray(w.haberesRecurrentes)) w.haberesRecurrentes = [];
     });
   }
 }
@@ -352,7 +355,11 @@ function liquidar(opts){
 
   // 1. Gratificación
   var gratMode = _resolverGratMode(worker, biz);
-  var gratificacion = calcGratificacion(sueldoBase, gratMode, imm);
+  var gratBaseMode = worker.gratBaseModo || 'base_mas_comisiones';
+  var baseGrat = (gratBaseMode === 'solo_base')
+    ? sueldoBase
+    : (sueldoBase + comisiones + otrosImponibles);
+  var gratificacion = calcGratificacion(baseGrat, gratMode, imm);
 
   // 2. Imponible
   var imponibleSinTope = sueldoBase + gratificacion + comisiones + otrosImponibles;
@@ -391,7 +398,10 @@ function liquidar(opts){
   }
 
   // 5. Cesantía
-  var descCes = calcCesantia(imponibleCes, worker.contrato, cesRates);
+  var cesantiaModo = worker.cesantiaModo || 'legal';
+  var descCes = (cesantiaModo === 'no_descuenta')
+    ? 0
+    : calcCesantia(imponibleCes, worker.contrato, cesRates);
 
   // 6. Impuesto único
   var baseTributable = imponible - descAfp - descSalud - descCes;
@@ -470,11 +480,13 @@ function liquidar(opts){
     // (diferenciador "transparencia total del cálculo")
     pasos: _construirPasos({
       sueldoBase: sueldoBase, gratificacion: gratificacion, gratMode: gratMode, imm: imm,
+      gratBaseMode: gratBaseMode, baseGrat: baseGrat,
       comisiones: comisiones, otrosImponibles: otrosImponibles, otrosNoImponibles: otrosNoImponibles,
       imponibleSinTope: imponibleSinTope, topePesos: topePesos, imponible: imponible, topeAplicado: topeAplicado,
       descAfp: descAfp, afpRate: afpRate, afpNombre: worker.afp,
       descSalud: descSalud, saludInfo: saludInfo,
       descCes: descCes, cesRate: _cesRate(worker.contrato, cesRates), contrato: worker.contrato,
+      cesantiaModo: cesantiaModo,
       baseTributable: baseTributable, descImp: descImp, impInfo: impInfo,
       liquido: liquido,
     }),
@@ -513,10 +525,13 @@ function _construirPasos(c){
   pasos.push({ titulo: 'Sueldo base', monto: _round(c.sueldoBase), detalle: 'Monto pactado en contrato' });
 
   if(c.gratMode === 'mensual' && c.gratificacion > 0){
+    var baseDetalle = c.gratBaseMode === 'solo_base'
+      ? 'Calculada sobre sueldo base (' + fmt(c.sueldoBase) + ')'
+      : 'Calculada sobre base + comisiones + otros imponibles (' + fmt(c.baseGrat) + ')';
     pasos.push({
       titulo: 'Gratificación mensual',
       monto: _round(c.gratificacion),
-      detalle: 'Mínimo entre 25% del sueldo y tope legal de 4,75 IMM / 12 = ' + fmt(4.75 * c.imm / 12),
+      detalle: baseDetalle + '. Mínimo entre 25% y tope legal de 4,75 IMM / 12 = ' + fmt(4.75 * c.imm / 12),
     });
   } else if(c.gratMode === 'anual'){
     pasos.push({ titulo: 'Gratificación', monto: 0, detalle: 'Modalidad anual — se paga al cierre del ejercicio' });
@@ -555,7 +570,13 @@ function _construirPasos(c){
   }
 
   if(c.contrato === 'indefinido' || c.contrato === 'plazo_fijo'){
-    if(c.cesRate > 0){
+    if(c.cesantiaModo === 'no_descuenta'){
+      pasos.push({
+        titulo: 'Seguro de cesantía',
+        monto: 0,
+        detalle: 'No se descuenta (declarado por el responsable)',
+      });
+    } else if(c.cesRate > 0){
       pasos.push({
         titulo:  'Seguro de cesantía',
         monto:   -_round(c.descCes),

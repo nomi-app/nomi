@@ -52,6 +52,9 @@ function openWorkerForm(workerId = null){
     document.getElementById('wf-grat').value = w.gratificacion || 'heredar';
     document.getElementById('wf-rol').value = w.rol || 'sin_comisiones';
     renderSalarioModoSelector(w.salarioModo || 'anclado');
+    renderCesantiaModoSelector(w.cesantiaModo || 'legal');
+    renderGratBaseSelector(w.gratBaseModo || 'base_mas_comisiones');
+    renderHaberesRecurrentes(w.haberesRecurrentes || []);
     if((w.salarioModo || 'anclado') === 'anclado' && typeof pisoLegal === 'function'){
       var pisoActual = pisoLegal(w, biz);
       if((w.sueldoBase || 0) < pisoActual){
@@ -98,6 +101,9 @@ function clearWorkerForm(){
   document.getElementById('wf-grat').value = 'heredar';
   document.getElementById('wf-rol').value = 'sin_comisiones';
   renderSalarioModoSelector('anclado');
+  renderCesantiaModoSelector('legal');
+  renderGratBaseSelector('base_mas_comisiones');
+  renderHaberesRecurrentes([]);
   document.getElementById('wf-template').value = 't1';
   document.getElementById('wf-isapre-moneda').value = 'pesos';
   // Clear errors
@@ -386,6 +392,9 @@ function saveWorker(){
       return sueldo;
     })(),
     salarioModo: getSalarioModoSel(),
+    cesantiaModo: getCesantiaModoSel(),
+    gratBaseModo: getGratBaseSel(),
+    haberesRecurrentes: getHaberesRecurrentes(),
     afp:   isHon ? null : afp,
     salud: isHon ? null : salud,
     isapreNombre: document.getElementById('wf-isapre-nombre').value.trim(),

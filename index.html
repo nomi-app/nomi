@@ -560,9 +560,11 @@
                 </div>
               </div>
               <div class="field" id="wf-ces-field">
-                <label class="label">Seguro de cesantía</label>
+                <label class="label">Cotización legal vigente</label>
                 <input class="input" id="wf-ces-display" readonly style="color:var(--text3);cursor:default"/>
               </div>
+              <!-- Selector de tratamiento de cesantía -->
+              <div class="field" id="wf-cesmodo"></div>
             </div>
 
             <!-- Previsión deshabilitada para honorarios -->
@@ -585,6 +587,20 @@
                   <option value="no_aplica">No aplica</option>
                 </select>
               </div>
+              <!-- Selector de base de cálculo -->
+              <div class="field" id="wf-gratbase"></div>
+            </div>
+
+            <div class="wd-sep"></div>
+
+            <!-- SECCIÓN: Haberes adicionales recurrentes -->
+            <div class="wd-section" id="wf-haberes-rec-section">
+              <div class="wd-section-title">Haberes adicionales recurrentes</div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.4">
+                Haberes no imponibles que aplican cada mes a este trabajador (ej: reembolso celular, beca escolar). Aparecerán prellenados al crear cada liquidación.
+              </div>
+              <div id="wf-haberes-rec-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+              <button class="btn btn-secondary btn-sm" onclick="hrecAgregar()" style="margin-top:8px">+ Agregar haber recurrente</button>
             </div>
 
             <div class="wd-sep"></div>
@@ -809,6 +825,163 @@
   </div>
 </div>
 
+<!-- PANEL DE LIQUIDACIÓN (3.D) -->
+<div id="lq-panel" style="display:none;position:fixed;inset:0;z-index:90">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px)" onclick="closeLiquidacion()"></div>
+  <div style="
+    position:absolute;right:0;top:0;bottom:0;
+    width:min(640px,100vw);
+    background:var(--bg2);
+    border-left:1px solid var(--border);
+    display:flex;flex-direction:column;
+    box-shadow:-8px 0 32px rgba(0,0,0,.12);
+    animation:slideIn .25s ease;
+  ">
+    <!-- Header -->
+    <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0">
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:500;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px" id="lq-eyebrow">Liquidación</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text)" id="lq-title">—</div>
+      </div>
+      <button class="btn btn-ghost btn-icon" onclick="closeLiquidacion()" title="Cerrar">✕</button>
+    </div>
+
+    <!-- Body scrollable -->
+    <div style="flex:1;overflow-y:auto;padding:22px">
+
+      <!-- HABERES -->
+      <div class="lq-section">
+        <div class="lq-section-title">Haberes</div>
+
+        <!-- Sueldo base / Monto bruto -->
+        <div class="field" style="margin-bottom:12px">
+          <label class="label" id="lq-titulo-bruto">Sueldo base</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
+            <input class="input" type="number" id="lq-sueldo" style="padding-left:26px" oninput="liqMarkDirty()"/>
+          </div>
+        </div>
+
+        <!-- Gratificación (read-only, sólo dependientes) -->
+        <div id="lq-section-grat" class="lq-row-static" style="margin-bottom:12px">
+          <span><span id="lq-grat-label">Gratificación</span></span>
+          <span class="lq-amount" id="lq-grat-monto">$0</span>
+        </div>
+
+        <!-- Comisiones -->
+        <div class="field" id="lq-section-comisiones" style="margin-bottom:12px">
+          <label class="label">Comisiones</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
+            <input class="input" type="number" id="lq-comisiones" placeholder="0" style="padding-left:26px" oninput="liqMarkDirty()"/>
+          </div>
+        </div>
+
+        <!-- Otros imponibles -->
+        <div class="field" id="lq-section-otros-imp" style="margin-bottom:12px">
+          <label class="label">Otros haberes imponibles</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
+            <input class="input" type="number" id="lq-otros-imp" placeholder="0" style="padding-left:26px" oninput="liqMarkDirty()"/>
+          </div>
+        </div>
+
+        <!-- Haberes no imponibles -->
+        <div id="lq-section-no-imp" style="margin-bottom:6px">
+          <div class="label" style="margin-bottom:8px">Haberes no imponibles</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="lq-noimp-field">
+              <label class="lq-noimp-lbl">Colación</label>
+              <div style="position:relative">
+                <span class="lq-noimp-peso">$</span>
+                <input class="input" type="number" id="lq-ni-colacion" placeholder="0" oninput="liqMarkDirty()"/>
+              </div>
+            </div>
+            <div class="lq-noimp-field">
+              <label class="lq-noimp-lbl">Movilización</label>
+              <div style="position:relative">
+                <span class="lq-noimp-peso">$</span>
+                <input class="input" type="number" id="lq-ni-movilizacion" placeholder="0" oninput="liqMarkDirty()"/>
+              </div>
+            </div>
+          </div>
+          <!-- Filas dinámicas de "Otros" -->
+          <div id="lq-otros-rows" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+          <button class="btn btn-secondary btn-sm" onclick="liqAgregarOtro()" style="margin-top:8px">+ Agregar otro</button>
+        </div>
+
+        <!-- Total haberes -->
+        <div class="lq-row-static lq-row-total" style="margin-top:14px">
+          <span>Total haberes</span>
+          <span class="lq-amount" id="lq-total-haberes">$0</span>
+        </div>
+
+        <!-- Aviso de tope imponible -->
+        <div id="lq-tope-aviso" style="display:none;font-size:11px;color:var(--gold);margin-top:8px">
+          ⓘ Se aplicó tope previsional de <span id="lq-tope-monto">—</span>
+        </div>
+      </div>
+
+      <div class="wd-sep"></div>
+
+      <!-- DESCUENTOS -->
+      <div class="lq-section">
+        <div class="lq-section-title">Descuentos</div>
+        <div id="lq-descuentos-body"></div>
+      </div>
+
+      <div class="wd-sep"></div>
+
+      <!-- LÍQUIDO -->
+      <div class="lq-liquido-box">
+        <div class="lq-liquido-label">Líquido a pagar</div>
+        <div class="lq-liquido-monto" id="lq-liquido-monto">$0</div>
+      </div>
+
+      <!-- Acciones secundarias -->
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="openLiquidacionDesglose()">Ver desglose completo</button>
+        <button class="btn btn-secondary btn-sm" disabled title="Disponible en el siguiente hito" onclick="liqExportPlaceholder('Exportar PDF')">📄 PDF</button>
+        <button class="btn btn-secondary btn-sm" disabled title="Disponible en el siguiente hito" onclick="liqExportPlaceholder('Enviar por WhatsApp')">💬 WhatsApp</button>
+        <button class="btn btn-secondary btn-sm" disabled title="Disponible en el siguiente hito" onclick="liqExportPlaceholder('Enviar por email')">✉ Email</button>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-ghost" id="lq-delete-btn" style="color:var(--danger)" onclick="eliminarLiquidacion()">Eliminar</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-secondary" onclick="closeLiquidacion()">Cancelar</button>
+      <button class="btn btn-primary" id="lq-save-btn" onclick="guardarLiquidacion()">Guardar y liquidar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE DESGLOSE COMPLETO -->
+<div id="lqd-overlay" style="
+  display:none;position:fixed;inset:0;z-index:360;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(3px);
+  align-items:center;justify-content:center;padding:20px;
+  animation:fadeIn .15s ease;
+">
+  <div style="
+    background:var(--bg2);border:1px solid var(--border);
+    border-radius:var(--radius-lg);padding:24px;
+    max-width:520px;width:100%;max-height:85vh;overflow-y:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.2);animation:fadeUp .2s ease;
+  ">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:600;color:var(--text)">Desglose paso a paso</div>
+      <button class="btn btn-ghost btn-icon btn-sm" onclick="closeLiquidacionDesglose()">✕</button>
+    </div>
+    <div id="lqd-body"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:18px">
+      <button class="btn btn-primary" onclick="closeLiquidacionDesglose()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL INFORMATIVO DE MODO DE SALARIO -->
 <div id="salinfo-overlay" style="
   display:none;position:fixed;inset:0;z-index:350;
@@ -928,6 +1101,7 @@
 <script src="js/payroll.js"></script>
 <script src="js/remuneraciones.js"></script>
 <script src="js/salario-ui.js"></script>
+<script src="js/liquidacion-ui.js"></script>
 <script src="js/workers.js"></script>
 </body>
 </html>
