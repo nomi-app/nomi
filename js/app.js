@@ -128,6 +128,10 @@ function go(page){
   if(page === 'config'){
     renderCfg();
   }
+  // If navigating TO remuneraciones, render the month list
+  if(page === 'remuneraciones'){
+    renderRemuneraciones();
+  }
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   var pageEl = document.getElementById('page-' + page);
