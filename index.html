@@ -435,11 +435,11 @@
                   </select>
                   <div class="error-msg" id="wf-contrato-err">Selecciona el tipo de contrato</div>
                 </div>
-                <div class="field">
+                <div class="field" id="wf-jornada-field">
                   <label class="label">Jornada <span style="color:var(--danger)">*</span></label>
                   <select class="input" id="wf-jornada" onchange="onJornadaChange()">
                     <option value="" disabled selected>Selecciona jornada…</option>
-                    <option value="completa">Completa (45h/sem)</option>
+                    <option value="completa" id="wf-jornada-opt-completa">Completa</option>
                     <option value="parcial">Parcial</option>
                   </select>
                   <div class="error-msg" id="wf-jornada-err">Selecciona la jornada</div>
@@ -505,6 +505,40 @@
 
               <!-- Selector de modo de salario -->
               <div class="field" id="wf-salmodo"></div>
+
+              <!-- Bloque honorarios (visible solo cuando contrato = honorarios) -->
+              <div id="wf-hon-bloque" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-top:4px">
+                <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Modalidad de pago</div>
+                <div class="field" style="margin-bottom:12px">
+                  <label class="label">Modalidad</label>
+                  <select class="input" id="wf-hon-modalidad" onchange="onHonModalidadChange()">
+                    <option value="mensual">Mensual — monto bruto referencial</option>
+                    <option value="diario">Diario — tarifa por día trabajado</option>
+                  </select>
+                </div>
+                <!-- Mensual: input propio del monto bruto mensual -->
+                <div id="wf-hon-mensual-field">
+                  <div class="field" style="margin-bottom:0">
+                    <label class="label">Monto bruto mensual pactado ($)</label>
+                    <div style="position:relative">
+                      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
+                      <input class="input" type="number" id="wf-hon-mensual-monto" placeholder="0" style="padding-left:26px" oninput="onHonMensualMontoChange()"/>
+                    </div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:4px">Este es el monto bruto referencial pactado. Podrás editarlo al registrar cada pago mensual.</div>
+                  </div>
+                </div>
+                <!-- Diario: tarifa por día -->
+                <div id="wf-hon-diario-field" style="display:none">
+                  <div class="field" style="margin-bottom:0">
+                    <label class="label">Tarifa diaria pactada ($)</label>
+                    <div style="position:relative">
+                      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
+                      <input class="input" type="number" id="wf-hon-tarifa" placeholder="0" style="padding-left:26px"/>
+                    </div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:4px">Al registrar el pago mensual podrás ingresar los días trabajados y el bruto se calculará automáticamente.</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="wd-sep"></div>
@@ -853,12 +887,29 @@
       <div class="lq-section">
         <div class="lq-section-title">Haberes</div>
 
+        <!-- Nota legal honorarios (visible sólo para honorarios) -->
+        <div id="lq-hon-nota" style="display:none;background:var(--gold-dim);border:1px solid rgba(217,119,6,.2);border-radius:var(--radius-sm);padding:10px 12px;font-size:11px;color:var(--gold);margin-bottom:14px;line-height:1.5">
+          ⓘ Este registro es para uso interno del negocio. El documento legal válido para honorarios es la <strong>boleta de honorarios electrónica</strong> que emite el prestador en el SII.
+        </div>
+
         <!-- Sueldo base / Monto bruto -->
         <div class="field" style="margin-bottom:12px">
           <label class="label" id="lq-titulo-bruto">Sueldo base</label>
           <div style="position:relative">
             <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
             <input class="input" type="number" id="lq-sueldo" style="padding-left:26px" oninput="liqMarkDirty()"/>
+          </div>
+        </div>
+
+        <!-- Bloque días trabajados (solo honorarios diarios) -->
+        <div id="lq-section-dias" style="display:none;margin-bottom:12px">
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Tarifa diaria pactada: <span id="lq-hon-tarifa-label" style="font-weight:600;color:var(--text);font-family:var(--mono)">$0</span></div>
+            <div class="field" style="margin-bottom:8px">
+              <label class="label">Días trabajados este mes</label>
+              <input class="input" type="number" id="lq-hon-dias" placeholder="0" min="1" max="31" oninput="liqHonDiasChange()"/>
+            </div>
+            <div style="font-size:12px;color:var(--text2)">Bruto calculado: <span id="lq-hon-bruto-calc" style="font-weight:600;color:var(--text);font-family:var(--mono)">$0</span> <span style="color:var(--text3)">(editable arriba)</span></div>
           </div>
         </div>
 

@@ -55,6 +55,16 @@ function openWorkerForm(workerId = null){
     renderCesantiaModoSelector(w.cesantiaModo || 'legal');
     renderGratBaseSelector(w.gratBaseModo || 'base_mas_comisiones');
     renderHaberesRecurrentes(w.haberesRecurrentes || []);
+    // Honorarios
+    if(w.contrato === 'honorarios'){
+      var honMod = document.getElementById('wf-hon-modalidad');
+      if(honMod) honMod.value = w.honorariosModalidad || 'mensual';
+      var honTarifa = document.getElementById('wf-hon-tarifa');
+      if(honTarifa) honTarifa.value = w.honorariosTarifaDiaria || '';
+      var honMensual = document.getElementById('wf-hon-mensual-monto');
+      if(honMensual) honMensual.value = w.sueldoBase || '';
+      onHonModalidadChange();
+    }
     if((w.salarioModo || 'anclado') === 'anclado' && typeof pisoLegal === 'function'){
       var pisoActual = pisoLegal(w, biz);
       if((w.sueldoBase || 0) < pisoActual){
@@ -64,6 +74,7 @@ function openWorkerForm(workerId = null){
     renderFichaNota(w);
     document.getElementById('wf-template').value = w.template || 't1';
     setSueldoMode('bruto');
+    _actualizarOpcionJornadaCompleta();
     onContratoChange();
     onJornadaChange();
     onSaludChange();
@@ -154,12 +165,96 @@ function validateWorkerRut(val){
 
 // ── Contrato / jornada / salud / rol changes ──
 function onContratoChange(){
-  const val = document.getElementById('wf-contrato').value;
-  const isHon = val === 'honorarios';
+  var val   = document.getElementById('wf-contrato').value;
+  var isHon = val === 'honorarios';
+
+  // Refrescar el texto dinámico de "Completa" según biz.params.jornadaCompleta
+  _actualizarOpcionJornadaCompleta();
+
+  // Previsión
   document.getElementById('wf-prev-section').style.display = isHon ? 'none' : 'block';
-  document.getElementById('wf-prev-nota').style.display = isHon ? 'block' : 'none';
-  document.getElementById('wf-sep-grat').style.display = 'block';
+  document.getElementById('wf-prev-nota').style.display    = isHon ? 'block' : 'none';
+
+  // Gratificación — ocultar para honorarios
+  var gratSection = document.getElementById('wf-grat-section');
+  var sepGrat     = document.getElementById('wf-sep-grat');
+  if(gratSection) gratSection.style.display = isHon ? 'none' : 'block';
+  if(sepGrat)     sepGrat.style.display     = 'block';
+
+  // Selector de salario (anclado/fijo/bajo_minimo) — ocultar para honorarios
+  var salModo = document.getElementById('wf-salmodo');
+  if(salModo) salModo.style.display = isHon ? 'none' : 'block';
+
+  // Switch bruto/liquido — ocultar para honorarios (tienen su propio bloque)
+  var swBruto    = document.getElementById('sw-bruto');
+  var swLiq      = document.getElementById('sw-liquido');
+  var swBrutoBtn = document.getElementById('sw-bruto-btn');
+  var swLiqBtn   = document.getElementById('sw-liquido-btn');
+  if(isHon){
+    if(swBruto)    swBruto.style.display    = 'none';
+    if(swLiq)      swLiq.style.display      = 'none';
+    if(swBrutoBtn) swBrutoBtn.style.display = 'none';
+    if(swLiqBtn)   swLiqBtn.style.display   = 'none';
+  } else {
+    if(swBrutoBtn) swBrutoBtn.style.display = '';
+    if(swLiqBtn)   swLiqBtn.style.display   = '';
+    setSueldoMode(sueldoMode || 'bruto');
+  }
+
+  // Bloque honorarios (modalidad mensual/diario)
+  var honBloque = document.getElementById('wf-hon-bloque');
+  if(honBloque) honBloque.style.display = isHon ? 'block' : 'none';
+
+  // Jornada: oculta completamente para honorarios. El campo "horas semanales"
+  // y la cotización legal también deben ocultarse. Internamente la guardamos
+  // como 'no_aplica' al guardar.
+  var jornadaField = document.getElementById('wf-jornada-field');
+  var horasField   = document.getElementById('wf-horas-field');
+  if(jornadaField) jornadaField.style.display = isHon ? 'none' : '';
+  if(isHon && horasField) horasField.classList.add('hidden');
+
+  // Label del campo de sueldo
+  _actualizarLabelSueldo(isHon);
+
   updateCesantiaDisplay();
+}
+
+// Actualiza el texto de la opción "Completa" del selector de jornada
+// con las horas vigentes en biz.params.jornadaCompleta.
+// Marco legal: Ley 21.561 establece la transición 45h → 42h (abr 2026) → 40h (abr 2028).
+function _actualizarOpcionJornadaCompleta(){
+  var opt = document.getElementById('wf-jornada-opt-completa');
+  if(!opt) return;
+  var biz = (typeof getBiz === 'function') ? getBiz() : null;
+  var jc  = (biz && biz.params && biz.params.jornadaCompleta) || 42;
+  opt.textContent = 'Completa (' + jc + 'h/sem)';
+}
+
+function _actualizarLabelSueldo(isHon){
+  var inp = document.getElementById('wf-sueldo');
+  if(!inp) return;
+  var field = inp.closest('.field');
+  if(!field) return;
+  var lbl = field.querySelector('.label');
+  if(!lbl) return;
+  lbl.innerHTML = isHon
+    ? 'Monto bruto mensual referencial <span style="color:var(--text3);font-weight:400">(para honorarios mensuales)</span>'
+    : 'Sueldo base <span style="color:var(--danger)">*</span>';
+}
+
+function onHonModalidadChange(){
+  var val = document.getElementById('wf-hon-modalidad') ?
+    document.getElementById('wf-hon-modalidad').value : 'mensual';
+  var diarioField  = document.getElementById('wf-hon-diario-field');
+  var mensualField = document.getElementById('wf-hon-mensual-field');
+  if(diarioField)  diarioField.style.display  = val === 'diario'  ? 'block' : 'none';
+  if(mensualField) mensualField.style.display = val === 'mensual' ? 'block' : 'none';
+}
+
+function onHonMensualMontoChange(){
+  var monto = parseFloat(document.getElementById('wf-hon-mensual-monto').value) || 0;
+  var sueldoInp = document.getElementById('wf-sueldo');
+  if(sueldoInp) sueldoInp.value = monto;  // mantener sincronizado para saveWorker
 }
 
 function onJornadaChange(){
@@ -220,81 +315,93 @@ function checkIMM(){
   const imm = biz.params?.imm || 500000;
   const sueldo = parseFloat(document.getElementById('wf-sueldo').value) || 0;
   const jornada = document.getElementById('wf-jornada').value;
-  const horas = parseFloat(document.getElementById('wf-horas').value) || 45;
-  const immProporcional = jornada === 'parcial' ? Math.round(imm * horas / 45) : imm;
+var jc_default = (biz.params && biz.params.jornadaCompleta) || 42;
+  var horas = parseFloat(document.getElementById('wf-horas').value) || jc_default;
+  var jc = (biz.params && biz.params.jornadaCompleta) || 42;
+  var immProporcional = jornada === 'parcial' ? Math.round(imm * horas / jc) : imm;
   const warnEl = document.getElementById('imm-warn');
   document.getElementById('imm-val').textContent = '$' + immProporcional.toLocaleString('es-CL');
   warnEl.style.display = (sueldo > 0 && sueldo < immProporcional) ? 'block' : 'none';
 }
 
-// ── Calc desde líquido ──
+// ── Calc desde líquido — usa el motor canónico liquidarDesdeLiquido() ──
 function calcDesdeliquido(){
-  const biz = getBiz();
+  var biz = getBiz();
   if(!biz) return;
-  const liquido = parseFloat(document.getElementById('wf-liquido').value) || 0;
-  const resEl = document.getElementById('liq-result');
-  const warnEl = document.getElementById('liq-warn');
+  var liquido = parseFloat(document.getElementById('wf-liquido').value) || 0;
+  var resEl   = document.getElementById('liq-result');
+  var warnEl  = document.getElementById('liq-warn');
   if(liquido <= 0){ resEl.style.display='none'; warnEl.style.display='none'; return; }
 
-  // Get current AFP rate
-  const afpName = document.getElementById('wf-afp').value;
-  const afpRate = (biz.params.afpRates?.[afpName] || 10.58) / 100;
-  const salud = document.getElementById('wf-salud').value;
-  const saludRate = 0.07; // Fonasa base; isapre handled separately
-  const contrato = document.getElementById('wf-contrato').value;
-  const cesRates = biz.params.cesantia || { indefinido:0.6, fijo:3.0 };
-  const cesRate = (contrato === 'indefinido' ? cesRates.indefinido : contrato === 'plazo_fijo' ? cesRates.fijo : 0) / 100;
-  const gratModo = document.getElementById('wf-grat').value === 'heredar'
-    ? biz.grat : document.getElementById('wf-grat').value;
-  const imm = biz.params?.imm || 500000;
+  // Construir un worker temporal con los valores del formulario en este momento.
+  // Así el cálculo es coherente con AFP, salud, jornada y modos elegidos ahora.
+  var workerTemp = {
+    id:              '__preview__',
+    nombre:          'Preview',
+    contrato:        document.getElementById('wf-contrato').value || 'indefinido',
+    jornada:         document.getElementById('wf-jornada').value  || 'completa',
+    horasSemanales:  parseFloat(document.getElementById('wf-horas').value) || biz.params.jornadaCompleta || 42,
+    afp:             document.getElementById('wf-afp').value,
+    salud:           document.getElementById('wf-salud').value,
+    isapreNombre:    document.getElementById('wf-isapre-nombre').value,
+    isapreMoneda:    document.getElementById('wf-isapre-moneda').value || 'pesos',
+    isapreMonto:     parseFloat(document.getElementById('wf-isapre-monto').value) || 0,
+    gratificacion:   document.getElementById('wf-grat').value || 'heredar',
+    salarioModo:     'fijo',   // para el cálculo inverso usamos 'fijo' (no queremos que pise el mínimo)
+    cesantiaModo:    getCesantiaModoSel ? getCesantiaModoSel() : 'legal',
+    gratBaseModo:    getGratBaseSel    ? getGratBaseSel()     : 'base_mas_comisiones',
+  };
 
-  // Iterative approximation: find bruto such that bruto - descuentos = liquido
-  // Descuentos = AFP + Salud + Cesantía (sobre imponible = bruto + grat)
-  // Gratificación mensual = min(bruto*0.25, imm*4.75/12)
-  let bruto = liquido * 1.25; // initial estimate
-  for(let i = 0; i < 20; i++){
-    let grat = 0;
-    if(gratModo === 'mensual'){
-      grat = Math.min(bruto * 0.25, Math.round(imm * 4.75 / 12));
-    }
-    const imponible = bruto + grat;
-    const descAfp = imponible * afpRate;
-    const descSalud = salud === 'fonasa' ? imponible * saludRate : 0;
-    const descCes = imponible * cesRate;
-    const totalDesc = descAfp + descSalud + descCes;
-    const calc = bruto + (gratModo === 'mensual' ? grat : 0) - totalDesc;
-    const diff = liquido - calc;
-    bruto += diff * 0.8;
-    if(Math.abs(diff) < 1) break;
+  var resultado = liquidarDesdeLiquido({
+    worker:         workerTemp,
+    biz:            biz,
+    liquidoObjetivo: liquido,
+  });
+
+  if(!resultado){
+    resEl.style.display = 'none';
+    warnEl.style.display = 'none';
+    return;
   }
-  bruto = Math.round(bruto);
-  let grat = 0;
-  if(gratModo === 'mensual') grat = Math.min(bruto * 0.25, Math.round(imm * 4.75 / 12));
-  const imponible = bruto + grat;
-  const descAfp = Math.round(imponible * afpRate);
-  const descSalud = salud === 'fonasa' ? Math.round(imponible * saludRate) : 0;
-  const descCes = Math.round(imponible * cesRate);
-  const neto = bruto + grat - descAfp - descSalud - descCes;
 
-  const fmt = n => '$' + Math.round(n).toLocaleString('es-CL');
-  document.getElementById('liq-bruto').textContent = fmt(bruto);
-  document.getElementById('liq-grat').textContent = grat > 0 ? fmt(grat) : 'No incluida';
-  document.getElementById('liq-afp').textContent = '-' + fmt(descAfp);
-  document.getElementById('liq-salud').textContent = descSalud > 0 ? '-' + fmt(descSalud) : 'Isapre (manual)';
-  document.getElementById('liq-ces').textContent = cesRate > 0 ? '-' + fmt(descCes) : 'No aplica';
-  document.getElementById('liq-neto').textContent = fmt(neto);
+  var fmt = function(n){ return '$' + Math.round(n).toLocaleString('es-CL'); };
+  var bruto       = resultado.brutoCalculado;
+  var h           = resultado.haberes;
+  var d           = resultado.descuentos;
+  var grat        = h.gratificacion || 0;
+  var descAfp     = d.afp.monto     || 0;
+  var descSalud   = d.salud.monto   || 0;
+  var descCes     = d.cesantia.monto|| 0;
+  var descImp     = d.impuestoUnico.monto || 0;
+  var liquidoReal = resultado.liquido;
+
+  document.getElementById('liq-bruto').textContent  = fmt(bruto);
+  document.getElementById('liq-grat').textContent   = grat > 0 ? fmt(grat) : 'No incluida';
+  document.getElementById('liq-afp').textContent    = descAfp  > 0 ? '-' + fmt(descAfp)  : 'No aplica';
+  document.getElementById('liq-salud').textContent  = descSalud > 0
+    ? '-' + fmt(descSalud)
+    : (workerTemp.salud === 'isapre' ? 'Isapre — ingresa plan' : 'No aplica');
+  document.getElementById('liq-ces').textContent    = descCes  > 0 ? '-' + fmt(descCes)  : 'No aplica';
+  document.getElementById('liq-neto').textContent   = fmt(liquidoReal);
+
+  // Línea de impuesto único si aplica (el HTML original no tiene este row; lo mostramos en cesantía si no hay)
+  // (en el HTML sólo hay 4 filas: bruto, grat, afp, salud, cesantia, neto — mantenemos compatibilidad)
+
   resEl.style.display = 'block';
 
-  // IMM warning
-  const imm_prop = bruto;
-  warnEl.style.display = (bruto < imm) ? 'block' : 'none';
-  if(bruto < imm) warnEl.textContent = `⚠ El bruto resultante ($${bruto.toLocaleString('es-CL')}) está bajo el IMM de $${imm.toLocaleString('es-CL')}.`;
+  // Advertencia IMM
+  var imm = (biz.params && biz.params.imm) || 500000;
+  warnEl.style.display = (bruto > 0 && bruto < imm) ? 'block' : 'none';
+  if(bruto > 0 && bruto < imm){
+    warnEl.textContent = '\u26a0 El bruto resultante (' + fmt(bruto) + ') est\xe1 bajo el IMM de ' + fmt(imm) + '.';
+  }
 }
 
 function usarBrutoSugerido(){
-  const brutoEl = document.getElementById('liq-bruto');
-  const val = brutoEl.textContent.replace(/[$.\s]/g,'').replace(',','.');
-  const num = parseFloat(val.replace(/\./g,''));
+  var brutoEl = document.getElementById('liq-bruto');
+  // Extraer número del texto formateado en pesos chilenos (e.g. "$1.234.567")
+  var raw = brutoEl.textContent.replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').trim();
+  var num = parseFloat(raw);
   if(num > 0){
     setSueldoMode('bruto');
     document.getElementById('wf-sueldo').value = num;
@@ -340,7 +447,7 @@ function saveWorker(){
     document.getElementById('wf-contrato-err').classList.add('show');
     valid = false;
   }
-  if(!jornada){
+  if(!isHon && !jornada){
     document.getElementById('wf-jornada').classList.add('error');
     document.getElementById('wf-jornada-err').classList.add('show');
     valid = false;
@@ -372,6 +479,13 @@ function saveWorker(){
   }
 
   // Build worker object, then PIN-protect the actual save
+  var honorariosModalidad = isHon
+    ? (document.getElementById('wf-hon-modalidad') ? document.getElementById('wf-hon-modalidad').value : 'mensual')
+    : null;
+  var honorariosTarifaDiaria = (isHon && honorariosModalidad === 'diario')
+    ? (parseFloat(document.getElementById('wf-hon-tarifa').value) || 0)
+    : null;
+
   const worker = {
     id: editingWorkerId || Date.now().toString(),
     nombre,
@@ -381,8 +495,10 @@ function saveWorker(){
     whatsapp: document.getElementById('wf-wa').value.trim(),
     email:    document.getElementById('wf-email').value.trim(),
     contrato,
-    jornada,
-    horasSemanales: parseFloat(document.getElementById('wf-horas').value) || 45,
+    jornada: isHon ? 'no_aplica' : jornada,
+    horasSemanales: isHon ? null : (parseFloat(document.getElementById('wf-horas').value) || (biz.params && biz.params.jornadaCompleta) || 42),
+    honorariosModalidad:    honorariosModalidad,
+    honorariosTarifaDiaria: honorariosTarifaDiaria,
     sueldoBase: (function(){
       var modo = getSalarioModoSel();
       if(modo === 'anclado' && typeof pisoLegal === 'function'){
