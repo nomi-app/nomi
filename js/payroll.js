@@ -97,6 +97,12 @@ function ensurePayrollParams(biz){
       if(!w.cesantiaModo)        w.cesantiaModo = 'legal';
       if(!w.gratBaseModo)        w.gratBaseModo = 'base_mas_comisiones';
       if(!Array.isArray(w.haberesRecurrentes)) w.haberesRecurrentes = [];
+
+      // 3.D Paso 2 — honorarios: tipo de acuerdo y quién retiene
+      if(w.contrato === 'honorarios'){
+        if(!w.honorariosAcuerdo)      w.honorariosAcuerdo      = 'bruto';
+        if(!w.honorariosQuienRetiene) w.honorariosQuienRetiene = 'trabajador';
+      }
     });
   }
 }
@@ -162,6 +168,9 @@ function pisoLegal(worker, biz){
 // Sueldo base efectivo que usa el motor. Aplica la regla del modo de salario.
 function sueldoBaseEfectivo(worker, biz){
   var pactado = worker.sueldoBase || 0;
+  // Honorarios: piso legal no aplica. El art. 44 CT rige a trabajadores
+  // dependientes; los honorarios son 2da categoría (LIR), fuera del CT.
+  if(worker && worker.contrato === 'honorarios') return pactado;
   var modo = worker.salarioModo || 'anclado';
   if(modo === 'anclado'){
     return Math.max(pactado, pisoLegal(worker, biz));
@@ -171,7 +180,9 @@ function sueldoBaseEfectivo(worker, biz){
 }
 
 // ¿El sueldo del trabajador está bajo el piso legal?
+// Honorarios: no aplica (régimen 2da categoría, fuera del art. 44 CT).
 function bajoMinimo(worker, biz){
+  if(worker && worker.contrato === 'honorarios') return false;
   return (worker.sueldoBase || 0) < pisoLegal(worker, biz);
 }
 
@@ -313,11 +324,108 @@ function liquidar(opts){
 
   var esHonorarios = worker.contrato === 'honorarios';
 
-  // ── HONORARIOS: flujo simplificado ──
+  // ── HONORARIOS: 4 escenarios (acuerdo × quién retiene) ──
+  // Eje 1 — Acuerdo:       'bruto'      | 'liquido'
+  // Eje 2 — Quién retiene: 'trabajador' | 'empleador'
+  //
+  //   A: bruto    + trabajador retiene → trabajador declara PPM en F29
+  //   B: bruto    + empleador retiene  → empleador declara en F29 línea 61 (cód. 151)
+  //   C: líquido  + trabajador retiene → boleta inversa: montoBase / (1 − tasa)
+  //   D: líquido  + empleador retiene  → misma boleta que C, distinto destino de la plata
+  //
+  // En C y D la boleta tiene el mismo monto. El "líquido" es lo que el trabajador
+  // queda con después de cumplir su obligación con el SII. La diferencia es de
+  // dónde sale cada peso:
+  //   C: empresa paga $boleta al trabajador, trabajador paga al SII por su cuenta
+  //   D: empresa paga $base al trabajador y $retención al SII directamente
+  //   Costo total empresa: C = D = $boleta.
+
   if(esHonorarios){
-    var brutoHon = sueldoBase + comisiones + otrosImponibles + otrosNoImponibles;
-    var retencion = brutoHon * (honRetRate / 100);
-    var liquidoHon = brutoHon - retencion;
+    var montoBase    = sueldoBase + comisiones + otrosImponibles + otrosNoImponibles;
+    var acuerdo      = worker.honorariosAcuerdo      || 'bruto';
+    var quienRetiene = worker.honorariosQuienRetiene || 'trabajador';
+    var tasa         = honRetRate / 100;
+
+    // Monto de la boleta (cálculo inverso si acuerdo = líquido)
+    var montoBoleta, retencionTotal;
+    if(acuerdo === 'bruto'){
+      montoBoleta    = montoBase;
+      retencionTotal = montoBoleta * tasa;
+    } else {
+      // 'liquido' — boleta = base / (1 − tasa) para que el trabajador quede con base
+      montoBoleta    = montoBase / (1 - tasa);
+      retencionTotal = montoBoleta * tasa;
+    }
+
+    // Distribución de pagos según quién retiene
+    var pagoTrabajador, pagoSII;
+    if(quienRetiene === 'empleador'){
+      pagoTrabajador = montoBoleta - retencionTotal;
+      pagoSII        = retencionTotal;
+    } else {
+      pagoTrabajador = montoBoleta;
+      pagoSII        = 0;
+    }
+
+    // Líquido final del trabajador (después de cumplir con el SII)
+    var liquidoFinal = (acuerdo === 'liquido') ? montoBase : (montoBoleta - retencionTotal);
+
+    // Identificación del escenario A/B/C/D
+    var escenario =
+      (acuerdo === 'bruto'   && quienRetiene === 'trabajador') ? 'A' :
+      (acuerdo === 'bruto'   && quienRetiene === 'empleador')  ? 'B' :
+      (acuerdo === 'liquido' && quienRetiene === 'trabajador') ? 'C' : 'D';
+
+    // Referencia técnica SII según quién retiene
+    var refSII = (quienRetiene === 'empleador')
+      ? 'F29 línea 61 (cód. 151) — lo declara la empresa'
+      : 'PPM en F29 — lo declara el trabajador';
+
+    // Pasos narrativos
+    var pasosHon = [];
+    pasosHon.push({
+      titulo:  'Monto acordado (' + (acuerdo === 'bruto' ? 'bruto' : 'líquido en mano') + ')',
+      monto:   _round(montoBase),
+      detalle: (acuerdo === 'bruto')
+        ? 'Valor pactado de la boleta'
+        : 'Valor que el trabajador debe quedar con después de cumplir con el SII',
+    });
+    if(acuerdo === 'liquido'){
+      pasosHon.push({
+        titulo:  'Monto de la boleta a emitir',
+        monto:   _round(montoBoleta),
+        detalle: 'Calculada como $' + _round(montoBase).toLocaleString('es-CL') + ' / (1 − ' + honRetRate + '%) para cerrar al líquido pactado',
+      });
+    }
+    pasosHon.push({
+      titulo:  'Retención SII (' + honRetRate + '%)',
+      monto:   -_round(retencionTotal),
+      detalle: refSII + ' · Ley 21.133',
+    });
+    pasosHon.push({
+      titulo:  'Pago al trabajador',
+      monto:   _round(pagoTrabajador),
+      detalle: 'Sale de la caja de la empresa',
+    });
+    if(pagoSII > 0){
+      pasosHon.push({
+        titulo:  'Pago al SII',
+        monto:   _round(pagoSII),
+        detalle: 'Sale de la caja de la empresa · ' + refSII,
+      });
+    } else {
+      pasosHon.push({
+        titulo:  'Pago al SII',
+        monto:   0,
+        detalle: 'A cargo del trabajador en su PPM mensual',
+      });
+    }
+    pasosHon.push({
+      titulo:  'LÍQUIDO QUE RECIBE EL TRABAJADOR',
+      monto:   _round(liquidoFinal),
+      esTotal: true,
+    });
+
     return {
       periodo: periodo,
       workerId: worker.id,
@@ -325,29 +433,39 @@ function liquidar(opts){
       esHonorarios: true,
       snapshot: _snapshotSnap(worker, biz, p, sueldoBase, afpRate),
       haberes: {
-        sueldoBase: _round(sueldoBase),
-        gratificacion: 0,
+        sueldoBase:            _round(sueldoBase),
+        gratificacion:         0,
         gratificacionEtiqueta: 'No aplica (honorarios)',
-        comisiones: _round(comisiones),
-        otrosImponibles: _round(otrosImponibles),
-        otrosNoImponibles: _round(otrosNoImponibles),
-        totalHaberes: _round(brutoHon),
+        comisiones:            _round(comisiones),
+        otrosImponibles:       _round(otrosImponibles),
+        otrosNoImponibles:     _round(otrosNoImponibles),
+        totalHaberes:          _round(montoBase),
       },
-      imponible: { bruto: _round(brutoHon), topePesos: 0, topeAplicado: false, imponibleFinal: 0, imponibleCes: 0 },
+      imponible: { bruto: _round(montoBase), topePesos: 0, topeAplicado: false, imponibleFinal: 0, imponibleCes: 0 },
       descuentos: {
         afp:           { monto: 0, tasa: 0, base: 0, aplica: false },
         salud:         { monto: 0, info: { tipo: 'no_aplica', descripcion: 'No aplica (honorarios)' }, base: 0, aplica: false },
         cesantia:      { monto: 0, tasa: 0, base: 0, aplica: false },
         impuestoUnico: { monto: 0, tramo: -1, factor: 0, rebaja: 0, baseTributable: 0, baseEnUTM: 0, aplica: false },
-        honorariosRetencion: { monto: _round(retencion), tasa: honRetRate, base: _round(brutoHon), aplica: true },
-        totalDescuentos: _round(retencion),
+        honorariosRetencion: {
+          // 3.D Paso 2 — campos nuevos
+          tasa:           honRetRate,
+          acuerdo:        acuerdo,
+          quienRetiene:   quienRetiene,
+          escenario:      escenario,
+          montoBase:      _round(montoBase),
+          montoBoleta:    _round(montoBoleta),
+          pagoTrabajador: _round(pagoTrabajador),
+          pagoSII:        _round(pagoSII),
+          // Compatibilidad con UI anterior (Pase C)
+          monto:          _round(retencionTotal),
+          base:           _round(montoBoleta),
+          aplica:         true,
+        },
+        totalDescuentos: _round(retencionTotal),
       },
-      liquido: _round(liquidoHon),
-      pasos: [
-        { titulo: 'Monto bruto de honorarios', monto: _round(brutoHon), detalle: 'Suma de haberes' },
-        { titulo: 'Retención SII (boleta)',    monto: -_round(retencion), detalle: honRetRate + '% sobre bruto — Ley 21.133' },
-        { titulo: 'LÍQUIDO A PAGAR',           monto: _round(liquidoHon), esTotal: true },
-      ],
+      liquido: _round(liquidoFinal),
+      pasos: pasosHon,
     };
   }
 

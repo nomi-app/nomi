@@ -208,6 +208,8 @@ function saveParams(){
   if(uf)   biz.params.uf   = uf;
   if(jc)   biz.params.jornadaCompleta = jc;
   biz.params.cesantia = { indefinido: ci || 0.6, fijo: cf || 3.0 };
+  var honRet = parseFloat(document.getElementById('cfg-hon-ret').value);
+  if(!isNaN(honRet) && honRet > 0) biz.params.honorariosRetencion = honRet;
   var rates = biz.params.afpRates || {};
   Object.keys(rates).forEach(function(name){
     var el = document.getElementById('cfg-afp-' + name.toLowerCase());
@@ -251,6 +253,7 @@ function renderCfg(){
   document.getElementById('cfg-jornada').value = p.jornadaCompleta || 42;
   document.getElementById('cfg-ces-indef').value = p.cesantia ? p.cesantia.indefinido : 0.6;
   document.getElementById('cfg-ces-fijo').value  = p.cesantia ? p.cesantia.fijo       : 3.0;
+  document.getElementById('cfg-hon-ret').value   = p.honorariosRetencion != null ? p.honorariosRetencion : 15.25;
 
   var grid = document.getElementById('cfg-afp-grid');
   grid.innerHTML = '';
