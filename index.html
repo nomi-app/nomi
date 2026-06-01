@@ -512,19 +512,19 @@
                 <div class="field" style="margin-bottom:12px">
                   <label class="label">Modalidad</label>
                   <select class="input" id="wf-hon-modalidad" onchange="onHonModalidadChange()">
-                    <option value="mensual">Mensual — monto bruto referencial</option>
+                    <option value="mensual">Mensual — monto fijo</option>
                     <option value="diario">Diario — tarifa por día trabajado</option>
                   </select>
                 </div>
                 <!-- Mensual: input propio del monto bruto mensual -->
                 <div id="wf-hon-mensual-field">
                   <div class="field" style="margin-bottom:0">
-                    <label class="label">Monto bruto mensual pactado ($)</label>
+                    <label class="label">Monto mensual pactado ($)</label>
                     <div style="position:relative">
                       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
                       <input class="input" type="number" id="wf-hon-mensual-monto" placeholder="0" style="padding-left:26px" oninput="onHonMensualMontoChange()"/>
                     </div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:4px">Este es el monto bruto referencial pactado. Podrás editarlo al registrar cada pago mensual.</div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:4px" id="wf-hon-mensual-help">Podrás editarlo al registrar cada pago mensual.</div>
                   </div>
                 </div>
                 <!-- Diario: tarifa por día -->
@@ -533,10 +533,21 @@
                     <label class="label">Tarifa diaria pactada ($)</label>
                     <div style="position:relative">
                       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
-                      <input class="input" type="number" id="wf-hon-tarifa" placeholder="0" style="padding-left:26px"/>
+                      <input class="input" type="number" id="wf-hon-tarifa" placeholder="0" style="padding-left:26px" oninput="updateHonPreview()"/>
                     </div>
                     <div style="font-size:11px;color:var(--text3);margin-top:4px">Al registrar el pago mensual podrás ingresar los días trabajados y el bruto se calculará automáticamente.</div>
                   </div>
+                </div>
+
+                <!-- Tipo de acuerdo + quién retiene -->
+                <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin:18px 0 12px">Acuerdo y retención SII</div>
+                <div class="field" id="wf-hon-acuerdo" style="margin-bottom:12px"></div>
+                <div class="field" id="wf-hon-retencion" style="margin-bottom:0"></div>
+
+                <!-- Vista previa del cálculo -->
+                <div id="wf-hon-preview" style="margin-top:14px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;display:none">
+                  <div style="font-weight:600;color:var(--text);margin-bottom:8px;font-size:11px;letter-spacing:.04em;text-transform:uppercase">Vista previa del cálculo</div>
+                  <div id="wf-hon-preview-body"></div>
                 </div>
               </div>
             </div>

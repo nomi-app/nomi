@@ -63,7 +63,10 @@ function openWorkerForm(workerId = null){
       if(honTarifa) honTarifa.value = w.honorariosTarifaDiaria || '';
       var honMensual = document.getElementById('wf-hon-mensual-monto');
       if(honMensual) honMensual.value = w.sueldoBase || '';
+      renderHonAcuerdoSelector(w.honorariosAcuerdo      || 'bruto');
+      renderHonRetencionSelector(w.honorariosQuienRetiene || 'trabajador');
       onHonModalidadChange();
+      updateHonPreview();
     }
     if((w.salarioModo || 'anclado') === 'anclado' && typeof pisoLegal === 'function'){
       var pisoActual = pisoLegal(w, biz);
@@ -101,7 +104,8 @@ function openWorkerForm(workerId = null){
 
 function clearWorkerForm(){
   ['wf-nombre','wf-rut','wf-wa','wf-email','wf-cargo','wf-horas','wf-sueldo','wf-liquido',
-   'wf-isapre-nombre','wf-isapre-monto'].forEach(id => {
+   'wf-isapre-nombre','wf-isapre-monto',
+   'wf-hon-mensual-monto','wf-hon-tarifa'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
@@ -115,8 +119,12 @@ function clearWorkerForm(){
   renderCesantiaModoSelector('legal');
   renderGratBaseSelector('base_mas_comisiones');
   renderHaberesRecurrentes([]);
+  renderHonAcuerdoSelector('bruto');
+  renderHonRetencionSelector('trabajador');
   document.getElementById('wf-template').value = 't1';
   document.getElementById('wf-isapre-moneda').value = 'pesos';
+  var honModEl = document.getElementById('wf-hon-modalidad');
+  if(honModEl) honModEl.value = 'mensual';
   // Clear errors
   document.querySelectorAll('.error-msg').forEach(e => e.classList.remove('show'));
   document.querySelectorAll('.input.error').forEach(e => e.classList.remove('error'));
@@ -237,9 +245,15 @@ function _actualizarLabelSueldo(isHon){
   if(!field) return;
   var lbl = field.querySelector('.label');
   if(!lbl) return;
-  lbl.innerHTML = isHon
-    ? 'Monto bruto mensual referencial <span style="color:var(--text3);font-weight:400">(para honorarios mensuales)</span>'
-    : 'Sueldo base <span style="color:var(--danger)">*</span>';
+  if(isHon){
+    // En honorarios el input wf-sueldo está oculto; ocultamos también su contenedor
+    // para evitar el label flotando arriba del bloque honorarios. El bloque
+    // honorarios tiene su propio label interno coherente con el acuerdo elegido.
+    field.style.display = 'none';
+  } else {
+    field.style.display = '';
+    lbl.innerHTML = 'Sueldo base <span style="color:var(--danger)">*</span>';
+  }
 }
 
 function onHonModalidadChange(){
@@ -249,12 +263,14 @@ function onHonModalidadChange(){
   var mensualField = document.getElementById('wf-hon-mensual-field');
   if(diarioField)  diarioField.style.display  = val === 'diario'  ? 'block' : 'none';
   if(mensualField) mensualField.style.display = val === 'mensual' ? 'block' : 'none';
+  if(typeof updateHonPreview === 'function') updateHonPreview();
 }
 
 function onHonMensualMontoChange(){
   var monto = parseFloat(document.getElementById('wf-hon-mensual-monto').value) || 0;
   var sueldoInp = document.getElementById('wf-sueldo');
   if(sueldoInp) sueldoInp.value = monto;  // mantener sincronizado para saveWorker
+  if(typeof updateHonPreview === 'function') updateHonPreview();
 }
 
 function onJornadaChange(){
@@ -485,6 +501,8 @@ function saveWorker(){
   var honorariosTarifaDiaria = (isHon && honorariosModalidad === 'diario')
     ? (parseFloat(document.getElementById('wf-hon-tarifa').value) || 0)
     : null;
+  var honorariosAcuerdo      = isHon ? getHonAcuerdoSel()    : null;
+  var honorariosQuienRetiene = isHon ? getHonRetencionSel() : null;
 
   const worker = {
     id: editingWorkerId || Date.now().toString(),
@@ -497,9 +515,13 @@ function saveWorker(){
     contrato,
     jornada: isHon ? 'no_aplica' : jornada,
     horasSemanales: isHon ? null : (parseFloat(document.getElementById('wf-horas').value) || (biz.params && biz.params.jornadaCompleta) || 42),
-    honorariosModalidad:    honorariosModalidad,
-    honorariosTarifaDiaria: honorariosTarifaDiaria,
+    honorariosModalidad:     honorariosModalidad,
+    honorariosTarifaDiaria:  honorariosTarifaDiaria,
+    honorariosAcuerdo:       honorariosAcuerdo,
+    honorariosQuienRetiene:  honorariosQuienRetiene,
     sueldoBase: (function(){
+      // Honorarios: monto independiente, no se aplica piso legal (régimen 2da categoría).
+      if(isHon) return sueldo;
       var modo = getSalarioModoSel();
       if(modo === 'anclado' && typeof pisoLegal === 'function'){
         var pisoW = pisoLegal({ jornada: jornada, horasSemanales: parseFloat(document.getElementById('wf-horas').value) || 45 }, getBiz());

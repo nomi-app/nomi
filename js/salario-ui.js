@@ -172,7 +172,66 @@ var INFO_MODALES = {
         '<p style="margin-top:12px"><strong>Verifica</strong> que esta modalidad esté pactada en el contrato individual del trabajador antes de aplicarla.</p>';
     },
   },
+
+  // ── 3.D Paso 2 — Honorarios: acuerdo y retención ──
+  hon_acuerdo_bruto: {
+    titulo: 'Acuerdo en bruto',
+    cuerpo: function(){
+      return '<p>El monto que acordaste con el trabajador es el <strong>valor de la boleta</strong> que él va a emitir en el SII. Es la forma más habitual de pactar honorarios.</p>' +
+        '<p style="margin-top:12px"><strong>Qué significa en la práctica:</strong></p>' +
+        '<ul style="margin:6px 0 0 18px;padding:0">' +
+          '<li style="margin-bottom:6px">Si el trabajador retiene su propia boleta, la empresa le paga el monto bruto completo y el trabajador descuenta y declara la retención en su PPM mensual.</li>' +
+          '<li style="margin-bottom:6px">Si la empresa retiene, le paga al trabajador el bruto menos la retención y la empresa entera ese impuesto al SII.</li>' +
+        '</ul>' +
+        '<p style="margin-top:12px">El monto líquido que termina recibiendo el trabajador depende de quién retenga. Nomi calcula ambos lados.</p>' +
+        '<p style="margin-top:12px">Si en cambio pactaste un monto líquido fijo en mano para el trabajador y necesitas que Nomi calcule la boleta hacia atrás, usa <strong>"Acuerdo en líquido"</strong>.</p>';
+    },
+  },
+  hon_acuerdo_liquido: {
+    titulo: 'Acuerdo en líquido',
+    cuerpo: function(){
+      var tasa = _honTasaActual();
+      return '<p>El monto que acordaste es lo que el trabajador queda con en mano <strong>después de cumplir con la retención del SII</strong>. Nomi calcula automáticamente cuánto debe emitirse en la boleta para llegar a ese líquido.</p>' +
+        '<p style="margin-top:12px"><strong>Fórmula:</strong> boleta = líquido / (1 − ' + tasa + '%). Para un líquido pactado de $100.000 con la tasa actual del ' + tasa + '%, la boleta debe ser de $' + Math.round(100000 / (1 - tasa/100)).toLocaleString('es-CL') + '.</p>' +
+        '<p style="margin-top:12px">Funciona igual que el cálculo bruto↔líquido que ya usas en trabajadores dependientes: tú pactas en líquido, Nomi resuelve el bruto necesario.</p>' +
+        '<p style="margin-top:12px"><strong>Importante:</strong> la tasa de retención sube anualmente según la Ley 21.133 (15,25% en 2026 → 17% en 2028). Cuando cambie, actualízala en Configuración y todos los cálculos se ajustan solos.</p>';
+    },
+  },
+  hon_retiene_trabajador: {
+    titulo: 'Retiene el trabajador',
+    cuerpo: function(){
+      var tasa = _honTasaActual();
+      return '<p>El trabajador retiene su propia boleta y declara la retención al SII por su cuenta. Es la opción que se marca como <em>"el emisor declarará el PPM"</em> en sii.cl al emitir la boleta.</p>' +
+        '<p style="margin-top:12px"><strong>Cómo funciona:</strong></p>' +
+        '<ul style="margin:6px 0 0 18px;padding:0">' +
+          '<li style="margin-bottom:6px">La empresa le paga al trabajador el monto completo de la boleta.</li>' +
+          '<li style="margin-bottom:6px">El trabajador declara y paga la retención del ' + tasa + '% mediante PPM en su propio Formulario 29, hasta el día 12 del mes siguiente.</li>' +
+          '<li style="margin-bottom:6px">La empresa no tiene obligación tributaria mensual por esta boleta.</li>' +
+        '</ul>' +
+        '<p style="margin-top:12px"><strong>Marco legal:</strong> artículo 74 N°2 de la Ley sobre Impuesto a la Renta. Aplica cuando el receptor de la boleta no está obligado a retener (típicamente personas naturales que no llevan contabilidad) o cuando se acuerda explícitamente que el emisor declarará.</p>';
+    },
+  },
+  hon_retiene_empleador: {
+    titulo: 'Retiene la empresa',
+    cuerpo: function(){
+      var tasa = _honTasaActual();
+      return '<p>La empresa retiene el ' + tasa + '% del valor de la boleta y entera esa retención directamente al SII. Es la opción que se marca como <em>"el receptor actuará reteniendo"</em> en sii.cl.</p>' +
+        '<p style="margin-top:12px"><strong>Cómo funciona:</strong></p>' +
+        '<ul style="margin:6px 0 0 18px;padding:0">' +
+          '<li style="margin-bottom:6px">La empresa paga al trabajador el monto de la boleta menos la retención del ' + tasa + '%.</li>' +
+          '<li style="margin-bottom:6px">La empresa declara y paga esa retención en el <strong>Formulario 29 línea 61 (código 151)</strong>, hasta el día 12 del mes siguiente (20 si declara por internet).</li>' +
+          '<li style="margin-bottom:6px">El trabajador no tiene obligación tributaria mensual por esta boleta; recibe el líquido directo.</li>' +
+        '</ul>' +
+        '<p style="margin-top:12px"><strong>Marco legal:</strong> artículo 74 N°2 de la Ley sobre Impuesto a la Renta. Es la opción obligatoria cuando el receptor es una empresa con contabilidad (sociedades, personas jurídicas en general).</p>';
+    },
+  },
 };
+
+// Helper interno usado por los modales de honorarios
+function _honTasaActual(){
+  var b = (typeof getBiz === 'function') ? getBiz() : null;
+  return (b && b.params && b.params.honorariosRetencion != null) ? b.params.honorariosRetencion : 15.25;
+}
 
 
 // ── Selector de cesantía ──
@@ -286,4 +345,122 @@ function cesantiaNotaHTML(worker){
     return '<div class="salmodo-card-note">⚠ Cesantía no descontada (declarado por el responsable).</div>';
   }
   return '';
+}
+
+
+// ════════════════════════════════════════════════════════════
+// 3.D Paso 2 — Selectores de honorarios (Acuerdo + Quién retiene)
+// ════════════════════════════════════════════════════════════
+
+var _honAcuerdoSel    = 'bruto';
+var _honRetencionSel  = 'trabajador';
+
+function renderHonAcuerdoSelector(modo){
+  _honAcuerdoSel = modo || 'bruto';
+  var cont = document.getElementById('wf-hon-acuerdo');
+  if(!cont) return;
+  var opts = [
+    { key: 'bruto',   label: 'Bruto (valor de la boleta)',  breve: 'Pactas lo que vale la boleta. El líquido depende de quién retiene.', info: 'hon_acuerdo_bruto' },
+    { key: 'liquido', label: 'Líquido en mano',              breve: 'Pactas lo que recibe el trabajador. Nomi calcula la boleta hacia atrás.', info: 'hon_acuerdo_liquido' },
+  ];
+  cont.innerHTML = '<label class="label">Tipo de acuerdo</label>' + _renderModoOpts(opts, _honAcuerdoSel, 'selectHonAcuerdo');
+}
+function selectHonAcuerdo(key){
+  _honAcuerdoSel = key;
+  renderHonAcuerdoSelector(key);
+  if(typeof updateHonPreview === 'function') updateHonPreview();
+}
+function getHonAcuerdoSel(){ return _honAcuerdoSel || 'bruto'; }
+
+
+function renderHonRetencionSelector(modo){
+  _honRetencionSel = modo || 'trabajador';
+  var cont = document.getElementById('wf-hon-retencion');
+  if(!cont) return;
+  var tasa = _honTasaActual();
+  var opts = [
+    { key: 'trabajador', label: 'Retiene el trabajador', breve: 'PPM declarado por el trabajador en su propio F29.',         info: 'hon_retiene_trabajador' },
+    { key: 'empleador',  label: 'Retiene la empresa',    breve: 'La empresa declara la retención en F29 línea 61 (cód. 151).', info: 'hon_retiene_empleador' },
+  ];
+  cont.innerHTML = '<label class="label">Quién retiene el ' + tasa + '%</label>' + _renderModoOpts(opts, _honRetencionSel, 'selectHonRetencion');
+}
+function selectHonRetencion(key){
+  _honRetencionSel = key;
+  renderHonRetencionSelector(key);
+  if(typeof updateHonPreview === 'function') updateHonPreview();
+}
+function getHonRetencionSel(){ return _honRetencionSel || 'trabajador'; }
+
+
+// ── Vista previa del cálculo en la ficha ──
+// Llama a liquidar() con los datos del form y muestra montoBoleta / pagoTrabajador / pagoSII / líquido.
+function updateHonPreview(){
+  var box  = document.getElementById('wf-hon-preview');
+  var body = document.getElementById('wf-hon-preview-body');
+  if(!box || !body) return;
+
+  // Sólo si contrato = honorarios
+  var contratoEl = document.getElementById('wf-contrato');
+  if(!contratoEl || contratoEl.value !== 'honorarios'){
+    box.style.display = 'none';
+    return;
+  }
+
+  // Determinar el monto base según la modalidad
+  var modalidad = document.getElementById('wf-hon-modalidad').value;
+  var montoBase;
+  if(modalidad === 'mensual'){
+    montoBase = parseFloat(document.getElementById('wf-hon-mensual-monto').value) || 0;
+  } else {
+    // En diario el preview asume 1 día como referencia
+    montoBase = parseFloat(document.getElementById('wf-hon-tarifa').value) || 0;
+  }
+  if(montoBase <= 0){ box.style.display = 'none'; return; }
+
+  var biz = (typeof getBiz === 'function') ? getBiz() : null;
+  if(!biz){ box.style.display = 'none'; return; }
+
+  var workerFantasma = {
+    id: 'preview',
+    contrato: 'honorarios',
+    sueldoBase: montoBase,
+    honorariosAcuerdo:      getHonAcuerdoSel(),
+    honorariosQuienRetiene: getHonRetencionSel(),
+  };
+
+  var liq;
+  try {
+    liq = liquidar({ worker: workerFantasma, biz: biz });
+  } catch(e){
+    box.style.display = 'none';
+    return;
+  }
+  var h = liq.descuentos.honorariosRetencion;
+  var fmt = function(n){ return '$' + Math.round(n).toLocaleString('es-CL'); };
+
+  var unidad = modalidad === 'diario' ? ' por día' : '';
+  var html =
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;color:var(--text2)"><span>Monto de la boleta' + unidad + '</span><span style="font-family:var(--mono);color:var(--text)">' + fmt(h.montoBoleta) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;color:var(--text2)"><span>Pago al trabajador' + unidad + '</span><span style="font-family:var(--mono);color:var(--text)">' + fmt(h.pagoTrabajador) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;color:var(--text2)"><span>Pago al SII' + unidad + '</span><span style="font-family:var(--mono);color:var(--text)">' + fmt(h.pagoSII) + '</span></div>' +
+    '<div style="height:1px;background:var(--border);margin:6px 0"></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;font-weight:600"><span>Líquido del trabajador</span><span style="font-family:var(--mono);color:var(--success)">' + fmt(liq.liquido) + '</span></div>' +
+    '<div style="margin-top:8px;font-size:10px;color:var(--text3);letter-spacing:.04em">Escenario ' + h.escenario + ' · tasa ' + h.tasa + '%' +
+      (modalidad === 'diario' ? ' · referencia para 1 día' : '') +
+    '</div>';
+  body.innerHTML = html;
+  box.style.display = 'block';
+
+  // Sincronizar label y ayuda del input según el tipo de acuerdo
+  var lbl  = document.getElementById('wf-hon-mensual-label');
+  var help = document.getElementById('wf-hon-mensual-help');
+  if(lbl && help){
+    if(_honAcuerdoSel === 'liquido'){
+      lbl.textContent  = 'Monto líquido mensual en mano ($)';
+      help.textContent = 'Lo que el trabajador recibe en mano. Nomi calcula la boleta hacia atrás.';
+    } else {
+      lbl.textContent  = 'Monto bruto mensual pactado ($)';
+      help.textContent = 'Valor de la boleta. Podrás editarlo al registrar cada pago mensual.';
+    }
+  }
 }
