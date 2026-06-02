@@ -208,17 +208,8 @@ function renderRemuneraciones(){
 // ════════════════════════════════
 // ACCIONES
 // ════════════════════════════════
-
-// Click en una tarjeta. En 3.C sólo informa; en 3.D abrirá la calculadora.
-function remAbrirTrabajador(workerId, status){
-  // Placeholder hasta 3.D
-  if(status === 'liquidada'){
-    var liq = getPayroll(_remPeriodo, workerId);
-    if(liq) toast('Liquidación: ' + _remMoney(liq.liquido) + ' líquido');
-  } else {
-    toast('La calculadora de liquidación llega en el siguiente paso');
-  }
-}
+// remAbrirTrabajador vive en liquidacion-ui.js (Hito 3.D Pase A).
+// La versión placeholder que vivía aquí fue retirada en el barrido del Paso 2.
 
 // Liquidar todos los pendientes del mes.
 function remLiquidarTodos(){
