@@ -809,6 +809,7 @@ select.input{cursor:pointer;-webkit-appearance:none;appearance:none;
 .salmodo-breve{font-size:11px;color:var(--text3);margin-top:5px;margin-left:24px;line-height:1.4}
 .salmodo-breve.warn{color:var(--gold)}
 .salmodo-card-note{font-size:11px;color:var(--gold);margin-top:6px;line-height:1.4}
+.hon-nota-card{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.4;letter-spacing:.01em}
 
 /* ── Calculadora de liquidación (3.D) ── */
 .lq-section{margin-bottom:6px}

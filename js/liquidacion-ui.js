@@ -94,10 +94,12 @@ function openLiquidacion(workerId, periodo){
       var tarifa = w.honorariosTarifaDiaria || 0;
       tarifaLabel.textContent = '$' + Math.round(tarifa).toLocaleString('es-CL');
     }
-    // Si hay liquidación existente, restaurar días; si no, campo vacío
-    if(existente && existente.haberes && existente.haberes.diasTrabajados){
-      var diasInp = document.getElementById('lq-hon-dias');
-      if(diasInp) diasInp.value = existente.haberes.diasTrabajados;
+    // Si hay liquidación existente, restaurar días; si no, resetear a 0
+    var diasInp = document.getElementById('lq-hon-dias');
+    if(diasInp){
+      diasInp.value = (existente && existente.haberes && existente.haberes.diasTrabajados)
+        ? existente.haberes.diasTrabajados
+        : '';
     }
   }
 
@@ -263,15 +265,7 @@ function _renderLiquidacionResult(r){
   var dEl = document.getElementById('lq-descuentos-body');
   var dhtml = '';
   if(esHon){
-    dhtml +=
-      '<div class="lq-row">' +
-        '<span>Retención SII (Ley 21.133)</span>' +
-        '<span class="lq-amount lq-neg">' + _money(r.descuentos.honorariosRetencion.monto) + '</span>' +
-      '</div>' +
-      '<div class="lq-row lq-sub">' +
-        '<span>Tasa</span>' +
-        '<span>' + r.descuentos.honorariosRetencion.tasa + '%</span>' +
-      '</div>';
+    dhtml += _liqHonorariosHTML(r);
   } else {
     if(r.descuentos.afp.aplica){
       dhtml += '<div class="lq-row"><span>AFP ' + (r.descuentos.afp.nombre || '') + ' (' + r.descuentos.afp.tasa + '%)</span><span class="lq-amount lq-neg">' + _money(r.descuentos.afp.monto) + '</span></div>';
@@ -288,10 +282,18 @@ function _renderLiquidacionResult(r){
       dhtml += '<div class="lq-row lq-sub"><span>Impuesto único 2ª categoría</span><span>Exento</span></div>';
     }
   }
-  dhtml += '<div class="lq-row lq-total-row"><span>Total descuentos</span><span class="lq-amount">' + _money(r.descuentos.totalDescuentos) + '</span></div>';
+  if(!esHon){
+    dhtml += '<div class="lq-row lq-total-row"><span>Total descuentos</span><span class="lq-amount">' + _money(r.descuentos.totalDescuentos) + '</span></div>';
+  }
   dEl.innerHTML = dhtml;
 
   document.getElementById('lq-liquido-monto').textContent = _money(r.liquido);
+
+  // Label del bloque líquido: en honorarios se llama distinto
+  var liqLbl = document.querySelector('.lq-liquido-label');
+  if(liqLbl){
+    liqLbl.textContent = esHon ? 'Líquido del trabajador' : 'Líquido a pagar';
+  }
 
   if(!esHon && r.imponible.topeAplicado){
     document.getElementById('lq-tope-aviso').style.display = '';
@@ -412,4 +414,105 @@ function remAbrirTrabajador(workerId, status){
 
 function liqExportPlaceholder(donde){
   toast(donde + ' disponible en el siguiente hito');
+}
+
+
+// ════════════════════════════════════════════════════════════
+// 3.D Paso 2C — Bloque de descuentos para honorarios
+// ════════════════════════════════════════════════════════════
+// Construye el HTML completo del bloque de descuentos cuando contrato = honorarios.
+// Incluye:
+//   1. Las tres líneas de pago (Boleta / Pago al trabajador / Pago al SII)
+//   2. Línea de tasa y escenario
+//   3. Nota narrativa explicando el escenario
+//   4. Alerta de verificación contra el SII (sólo escenarios B y D)
+
+function _liqHonorariosHTML(r){
+  var h = r.descuentos.honorariosRetencion;
+  var esc_  = (typeof esc === 'function') ? esc : function(s){ return s; };
+
+  // Etiqueta de la tasa: "(15,25% — Ley 21.133)" formateando con coma decimal
+  var tasaTxt = String(h.tasa).replace('.', ',');
+
+  // ── Tres líneas siempre visibles ──
+  var html = '';
+  html +=
+    '<div class="lq-row">' +
+      '<span>Monto de la boleta</span>' +
+      '<span class="lq-amount">' + _money(h.montoBoleta) + '</span>' +
+    '</div>';
+  html +=
+    '<div class="lq-row">' +
+      '<span>Pago al trabajador</span>' +
+      '<span class="lq-amount" style="color:var(--success)">' + _money(h.pagoTrabajador) + '</span>' +
+    '</div>';
+  html +=
+    '<div class="lq-row">' +
+      '<span>Pago al SII</span>' +
+      '<span class="lq-amount' + (h.pagoSII > 0 ? ' lq-neg' : '') + '">' + _money(h.pagoSII) + '</span>' +
+    '</div>';
+
+  // ── Línea de tasa y escenario ──
+  html +=
+    '<div class="lq-row lq-sub">' +
+      '<span>Retención SII (Ley 21.133)</span>' +
+      '<span>' + tasaTxt + '% · ' + _money(h.monto) + '</span>' +
+    '</div>';
+
+  // ── Nota narrativa por escenario ──
+  html += '<div style="margin-top:10px;padding:10px 12px;background:var(--bg2);border-left:3px solid var(--accent);border-radius:4px;font-size:11px;line-height:1.55;color:var(--text2)">';
+  html += _liqHonNotaEscenario(h);
+  html += '</div>';
+
+  // ── Alerta de verificación contra el SII (sólo B y D: empresa retiene) ──
+  if(h.quienRetiene === 'empleador'){
+    html += '<div style="margin-top:10px;padding:10px 12px;background:rgba(212,150,40,.08);border:1px solid rgba(212,150,40,.25);border-radius:4px;font-size:11px;line-height:1.55;color:var(--text2)">';
+    html += '<div style="font-weight:600;color:var(--gold);margin-bottom:4px">⚠ Obligación tributaria mensual</div>';
+    html += 'La empresa debe declarar la retención de <strong>' + _money(h.pagoSII) + '</strong> en el ';
+    html += '<strong>Formulario 29 línea 61 (código 151)</strong>, hasta el día 12 del mes siguiente ';
+    html += '(20 si se declara por internet). Verifica también que la boleta de honorarios emitida en sii.cl ';
+    html += 'tenga marcada la opción <em>"el receptor actuará reteniendo"</em>.';
+    html += '</div>';
+  } else {
+    // Trabajador retiene (A y C): nota informativa, sin alerta
+    html += '<div style="margin-top:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;line-height:1.55;color:var(--text3)">';
+    html += '<strong style="color:var(--text2)">ℹ Sin obligación tributaria para la empresa.</strong> ';
+    html += 'El trabajador declara y paga la retención de <strong>' + _money(h.monto) + '</strong> ';
+    html += 'mediante PPM en su propio Formulario 29. Verifica que la boleta emitida en sii.cl ';
+    html += 'tenga marcada la opción <em>"el emisor declarará el PPM"</em>.';
+    html += '</div>';
+  }
+
+  return html;
+}
+
+// Texto narrativo según escenario A/B/C/D
+function _liqHonNotaEscenario(h){
+  var esc_ = (typeof esc === 'function') ? esc : function(s){ return s; };
+  switch(h.escenario){
+    case 'A':
+      // bruto + trabajador retiene
+      return '<strong style="color:var(--text)">Acuerdo en bruto, retiene el trabajador.</strong> ' +
+             'Pactaste el valor de la boleta. La empresa le paga al trabajador el monto completo (' + _money(h.pagoTrabajador) + ') ' +
+             'y el trabajador declara la retención en su PPM mensual. Líquido final del trabajador: ' + _money(h.pagoTrabajador - h.monto) + '.';
+    case 'B':
+      // bruto + empleador retiene
+      return '<strong style="color:var(--text)">Acuerdo en bruto, retiene la empresa.</strong> ' +
+             'Pactaste el valor de la boleta. La empresa retiene del pago y le entrega al trabajador el líquido (' + _money(h.pagoTrabajador) + '). ' +
+             'La empresa entera la retención (' + _money(h.pagoSII) + ') al SII por su cuenta.';
+    case 'C':
+      // líquido + trabajador retiene
+      return '<strong style="color:var(--text)">Acuerdo en líquido, retiene el trabajador.</strong> ' +
+             'Pactaste lo que el trabajador queda con después del SII. La empresa le paga el monto completo de la boleta (' + _money(h.pagoTrabajador) + ') ' +
+             'y el trabajador paga la retención (' + _money(h.monto) + ') vía PPM. Líquido final: ' + _money(h.montoBase) + '. ' +
+             '<br><span style="color:var(--text3)">El pago de caja al trabajador es más alto que el líquido pactado: él lo necesita para cubrir su retención.</span>';
+    case 'D':
+      // líquido + empleador retiene
+      return '<strong style="color:var(--text)">Acuerdo en líquido, retiene la empresa.</strong> ' +
+             'Pactaste lo que el trabajador recibe en mano. La empresa le paga directamente el líquido (' + _money(h.pagoTrabajador) + ') ' +
+             'y entera la retención (' + _money(h.pagoSII) + ') al SII por su cuenta. ' +
+             '<br><span style="color:var(--text3)">Costo total para la empresa idéntico al Escenario C: ' + _money(h.montoBoleta) + '.</span>';
+    default:
+      return '';
+  }
 }

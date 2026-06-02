@@ -520,8 +520,12 @@ function saveWorker(){
     honorariosAcuerdo:       honorariosAcuerdo,
     honorariosQuienRetiene:  honorariosQuienRetiene,
     sueldoBase: (function(){
-      // Honorarios: monto independiente, no se aplica piso legal (régimen 2da categoría).
-      if(isHon) return sueldo;
+      // Honorarios mensual: monto independiente, no se aplica piso legal.
+      // Honorarios diario: el sueldoBase no aplica; el cálculo usa tarifaDiaria × días.
+      //   Forzamos 0 para evitar arrastrar valores residuales del input wf-sueldo.
+      if(isHon){
+        return (honorariosModalidad === 'diario') ? 0 : sueldo;
+      }
       var modo = getSalarioModoSel();
       if(modo === 'anclado' && typeof pisoLegal === 'function'){
         var pisoW = pisoLegal({ jornada: jornada, horasSemanales: parseFloat(document.getElementById('wf-horas').value) || 45 }, getBiz());
@@ -630,12 +634,23 @@ function renderWorkerList(){
     // Use data attribute to store the worker id for editing
     card.setAttribute('data-wid', w.id);
 
-    var notaCard = (typeof salarioNotaHTML === 'function') ? salarioNotaHTML(w, biz) : '';
+    var esHon    = w.contrato === 'honorarios';
+    var notaCard = '';
+    if(esHon){
+      notaCard = (typeof honorariosNotaHTML === 'function') ? honorariosNotaHTML(w) : '';
+    } else {
+      notaCard = (typeof salarioNotaHTML === 'function') ? salarioNotaHTML(w, biz) : '';
+    }
+    // En honorarios omitimos AFP/Isapre/Fonasa (no aplican) y mostramos solo cargo + Honorarios.
+    // En dependientes mostramos la línea completa.
+    var metaLinea = esHon
+      ? (esc(w.cargo) + ' · ' + contratoLabel)
+      : (esc(w.cargo) + ' · AFP ' + esc(w.afp || '—') + ' · ' + saludLabel + ' · ' + contratoLabel);
     card.innerHTML =
       '<div class="w-avatar">' + initials + '</div>' +
       '<div class="w-info" style="pointer-events:none">' +
         '<div class="w-name">' + esc(w.nombre) + '</div>' +
-        '<div class="w-meta">' + esc(w.cargo) + ' · AFP ' + esc(w.afp || '—') + ' · ' + saludLabel + ' · ' + contratoLabel + '</div>' +
+        '<div class="w-meta">' + metaLinea + '</div>' +
         notaCard +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">' +

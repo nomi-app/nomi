@@ -347,6 +347,19 @@ function cesantiaNotaHTML(worker){
   return '';
 }
 
+// ── Nota informativa para tarjetas de honorarios ──
+// Muestra el escenario en formato compacto: "Honorarios · bruto · trabajador retiene"
+// No es advertencia (no usa ⚠), es identificación del régimen.
+function honorariosNotaHTML(worker){
+  if(!worker || worker.contrato !== 'honorarios') return '';
+  var acuerdo  = worker.honorariosAcuerdo      || 'bruto';
+  var retiene  = worker.honorariosQuienRetiene || 'trabajador';
+  var acLabel  = acuerdo === 'bruto' ? 'bruto' : 'líquido';
+  var reLabel  = retiene === 'empleador' ? 'retiene la empresa' : 'retiene el trabajador';
+  var modal    = (worker.honorariosModalidad === 'diario') ? 'diario' : 'mensual';
+  return '<div class="hon-nota-card">Honorarios · ' + modal + ' · ' + acLabel + ' · ' + reLabel + '</div>';
+}
+
 
 // ════════════════════════════════════════════════════════════
 // 3.D Paso 2 — Selectores de honorarios (Acuerdo + Quién retiene)

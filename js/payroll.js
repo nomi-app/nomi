@@ -206,6 +206,8 @@ function aplicarReglasIMM(biz){
   if(!biz || !biz.workers) return { normalizados: [] };
   var normalizados = [];
   biz.workers.forEach(function(w){
+    // Honorarios: nunca se normalizan al IMM (régimen 2da categoría, fuera del art. 44 CT).
+    if(w.contrato === 'honorarios') return;
     if((w.salarioModo || 'anclado') !== 'anclado') return; // fijo y bajo_minimo no se tocan
     var piso = pisoLegal(w, biz);
     var actual = w.sueldoBase || 0;

@@ -126,19 +126,53 @@ function renderRemuneraciones(){
       ? '<span class="badge badge-success" style="font-size:10px">Liquidada</span>'
       : '<span class="badge" style="font-size:10px">Pendiente</span>';
 
+    var esHon = w.contrato === 'honorarios';
+
+    // Etiqueta y monto referencial para tarjetas pendientes
+    var pendienteMonto, pendienteLabel;
+    if(esHon){
+      // Para pendientes honorarios mostramos el monto de la boleta (no el sueldoBase crudo),
+      // que en escenarios C/D es la inversa. Usamos liquidar() en modo "ligero" para esto.
+      var refMonto = w.sueldoBase || 0;
+      var refLabel = 'monto referencial';
+      try {
+        var liqRef = liquidar({ worker: w, biz: biz });
+        if(liqRef && liqRef.descuentos && liqRef.descuentos.honorariosRetencion){
+          refMonto = liqRef.descuentos.honorariosRetencion.montoBoleta || refMonto;
+          refLabel = 'boleta a emitir';
+        }
+      } catch(e){ /* fallback a sueldoBase */ }
+      pendienteMonto = refMonto;
+      pendienteLabel = refLabel;
+    } else {
+      pendienteMonto = w.sueldoBase;
+      pendienteLabel = 'sueldo base';
+    }
+
     var montoLinea = liquidada
       ? '<div class="rem-card-amount">' + _remMoney(item.liquidacion.liquido) + '</div>' +
-        '<div class="rem-card-amount-label">líquido</div>'
-      : '<div class="rem-card-amount pending">' + _remMoney(w.sueldoBase) + '</div>' +
-        '<div class="rem-card-amount-label">sueldo base</div>';
+        '<div class="rem-card-amount-label">' + (esHon ? 'líquido del trabajador' : 'líquido') + '</div>'
+      : '<div class="rem-card-amount pending">' + _remMoney(pendienteMonto) + '</div>' +
+        '<div class="rem-card-amount-label">' + pendienteLabel + '</div>';
+
+    // Meta line: en honorarios omitimos AFP (no aplica)
+    var metaLinea = esHon
+      ? esc(w.cargo || '') + (w.cargo ? ' · ' : '') + 'Honorarios'
+      : esc(w.cargo || '') + (w.cargo ? ' · ' : '') + 'AFP ' + esc(w.afp || '—');
+
+    // Nota de la tarjeta: en honorarios la nota informativa del escenario;
+    // en dependientes la advertencia de salario si corresponde.
+    var notaCard = esHon
+      ? ((typeof honorariosNotaHTML === 'function') ? honorariosNotaHTML(w) : '')
+      : ((typeof salarioNotaHTML === 'function') ? salarioNotaHTML(w, biz) : '');
 
     html +=
       '<div class="rem-card" data-wid="' + w.id + '" data-status="' + item.status + '">' +
         '<div class="w-avatar">' + iniciales + '</div>' +
         '<div class="rem-card-info">' +
           '<div class="w-name">' + esc(w.nombre) + '</div>' +
-          '<div class="w-meta">' + esc(w.cargo || '') + (w.cargo ? ' · ' : '') + 'AFP ' + esc(w.afp || '—') + '</div>' +
-          ((typeof salarioNotaHTML === 'function') ? salarioNotaHTML(w, biz) : '') +
+          '<div class="w-meta">' + metaLinea + '</div>' +
+          notaCard +
         '</div>' +
         '<div class="rem-card-right">' +
           montoLinea +
