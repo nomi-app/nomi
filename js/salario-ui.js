@@ -464,16 +464,29 @@ function updateHonPreview(){
   body.innerHTML = html;
   box.style.display = 'block';
 
-  // Sincronizar label y ayuda del input según el tipo de acuerdo
-  var lbl  = document.getElementById('wf-hon-mensual-label');
-  var help = document.getElementById('wf-hon-mensual-help');
-  if(lbl && help){
+  // Sincronizar label y ayuda del input mensual según el tipo de acuerdo
+  var lblMes  = document.getElementById('wf-hon-mensual-label');
+  var helpMes = document.getElementById('wf-hon-mensual-help');
+  if(lblMes && helpMes){
     if(_honAcuerdoSel === 'liquido'){
-      lbl.textContent  = 'Monto líquido mensual en mano ($)';
-      help.textContent = 'Lo que el trabajador recibe en mano. Nomi calcula la boleta hacia atrás.';
+      lblMes.textContent  = 'Monto líquido mensual en mano ($)';
+      helpMes.textContent = 'Lo que el trabajador recibe en mano. Nomi calcula la boleta hacia atrás.';
     } else {
-      lbl.textContent  = 'Monto bruto mensual pactado ($)';
-      help.textContent = 'Valor de la boleta. Podrás editarlo al registrar cada pago mensual.';
+      lblMes.textContent  = 'Monto bruto mensual pactado ($)';
+      helpMes.textContent = 'Valor de la boleta. Podrás editarlo al registrar cada pago mensual.';
+    }
+  }
+
+  // Sincronizar label y ayuda del input diario según el tipo de acuerdo
+  var lblDia  = document.getElementById('wf-hon-tarifa-label');
+  var helpDia = document.getElementById('wf-hon-tarifa-help');
+  if(lblDia && helpDia){
+    if(_honAcuerdoSel === 'liquido'){
+      lblDia.textContent  = 'Tarifa líquida diaria pactada ($)';
+      helpDia.textContent = 'Lo que el trabajador recibe en mano por cada día trabajado. La boleta diaria efectiva es mayor; Nomi la calcula al registrar el pago.';
+    } else {
+      lblDia.textContent  = 'Tarifa diaria pactada ($)';
+      helpDia.textContent = 'Valor de la boleta por cada día trabajado. Al registrar el pago ingresarás los días y el bruto total se calculará automáticamente.';
     }
   }
 }

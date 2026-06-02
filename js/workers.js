@@ -68,6 +68,9 @@ function openWorkerForm(workerId = null){
       onHonModalidadChange();
       updateHonPreview();
     }
+    // Aplicar visibilidad de secciones según el contrato cargado.
+    // Setear .value por JS no dispara 'change', así que llamamos a mano.
+    onContratoChange();
     if((w.salarioModo || 'anclado') === 'anclado' && typeof pisoLegal === 'function'){
       var pisoActual = pisoLegal(w, biz);
       if((w.sueldoBase || 0) < pisoActual){
@@ -183,11 +186,11 @@ function onContratoChange(){
   document.getElementById('wf-prev-section').style.display = isHon ? 'none' : 'block';
   document.getElementById('wf-prev-nota').style.display    = isHon ? 'block' : 'none';
 
-  // Gratificación — ocultar para honorarios
+  // Gratificación — ocultar para honorarios (incluido su separador previo)
   var gratSection = document.getElementById('wf-grat-section');
   var sepGrat     = document.getElementById('wf-sep-grat');
   if(gratSection) gratSection.style.display = isHon ? 'none' : 'block';
-  if(sepGrat)     sepGrat.style.display     = 'block';
+  if(sepGrat)     sepGrat.style.display     = isHon ? 'none' : 'block';
 
   // Selector de salario (anclado/fijo/bajo_minimo) — ocultar para honorarios
   var salModo = document.getElementById('wf-salmodo');
@@ -220,6 +223,36 @@ function onContratoChange(){
   var horasField   = document.getElementById('wf-horas-field');
   if(jornadaField) jornadaField.style.display = isHon ? 'none' : '';
   if(isHon && horasField) horasField.classList.add('hidden');
+  if(!isHon && horasField) horasField.classList.remove('hidden');
+
+  // Cotización legal de cesantía y selector de tratamiento — ocultos en honorarios.
+  // El régimen 2da categoría no contempla seguro de cesantía.
+  var cesField  = document.getElementById('wf-ces-field');
+  var cesModo   = document.getElementById('wf-cesmodo');
+  if(cesField) cesField.style.display = isHon ? 'none' : '';
+  if(cesModo)  cesModo.style.display  = isHon ? 'none' : '';
+
+  // Helper: oculta también el separador horizontal previo a un elemento.
+  // Sin esto, los wd-sep quedan flotando sobre secciones invisibles.
+  function _toggleSepBefore(id, hide){
+    var el  = document.getElementById(id);
+    if(!el) return;
+    var sep = el.previousElementSibling;
+    if(sep && sep.classList && sep.classList.contains('wd-sep')){
+      sep.style.display = hide ? 'none' : '';
+    }
+  }
+
+  // Haberes adicionales recurrentes — no aplican (en honorarios no hay imponibles).
+  var haberesSec = document.getElementById('wf-haberes-rec-section');
+  if(haberesSec) haberesSec.style.display = isHon ? 'none' : '';
+  _toggleSepBefore('wf-haberes-rec-section', isHon);
+
+  // Rol de comisiones — ocultar en honorarios (mezclar honorarios con comisiones
+  // bordea simulación de relación laboral; preferimos no ofrecer la combinación).
+  var comSec = document.getElementById('wf-com-section');
+  if(comSec) comSec.style.display = isHon ? 'none' : '';
+  _toggleSepBefore('wf-com-section', isHon);
 
   // Label del campo de sueldo
   _actualizarLabelSueldo(isHon);
@@ -533,18 +566,18 @@ function saveWorker(){
       }
       return sueldo;
     })(),
-    salarioModo: getSalarioModoSel(),
-    cesantiaModo: getCesantiaModoSel(),
-    gratBaseModo: getGratBaseSel(),
-    haberesRecurrentes: getHaberesRecurrentes(),
-    afp:   isHon ? null : afp,
-    salud: isHon ? null : salud,
-    isapreNombre: document.getElementById('wf-isapre-nombre').value.trim(),
-    isapreMoneda: document.getElementById('wf-isapre-moneda').value,
-    isapreMonto:  parseFloat(document.getElementById('wf-isapre-monto').value) || 0,
-    gratificacion: document.getElementById('wf-grat').value,
-    rol:      document.getElementById('wf-rol').value,
-    template: document.getElementById('wf-template').value,
+    salarioModo:        isHon ? null : getSalarioModoSel(),
+    cesantiaModo:       isHon ? null : getCesantiaModoSel(),
+    gratBaseModo:       isHon ? null : getGratBaseSel(),
+    haberesRecurrentes: isHon ? []   : getHaberesRecurrentes(),
+    afp:                isHon ? null : afp,
+    salud:              isHon ? null : salud,
+    isapreNombre:       isHon ? '' : document.getElementById('wf-isapre-nombre').value.trim(),
+    isapreMoneda:       isHon ? null : document.getElementById('wf-isapre-moneda').value,
+    isapreMonto:        isHon ? 0 : (parseFloat(document.getElementById('wf-isapre-monto').value) || 0),
+    gratificacion:      isHon ? null : document.getElementById('wf-grat').value,
+    rol:                isHon ? 'sin_comisiones' : document.getElementById('wf-rol').value,
+    template:           isHon ? null : document.getElementById('wf-template').value,
     createdAt: editingWorkerId
       ? (biz.workers.find(w=>w.id===editingWorkerId)?.createdAt || new Date().toISOString())
       : new Date().toISOString(),

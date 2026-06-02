@@ -530,12 +530,12 @@
                 <!-- Diario: tarifa por día -->
                 <div id="wf-hon-diario-field" style="display:none">
                   <div class="field" style="margin-bottom:0">
-                    <label class="label">Tarifa diaria pactada ($)</label>
+                    <label class="label" id="wf-hon-tarifa-label">Tarifa diaria pactada ($)</label>
                     <div style="position:relative">
                       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none">$</span>
                       <input class="input" type="number" id="wf-hon-tarifa" placeholder="0" style="padding-left:26px" oninput="updateHonPreview()"/>
                     </div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:4px">Al registrar el pago mensual podrás ingresar los días trabajados y el bruto se calculará automáticamente.</div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:4px" id="wf-hon-tarifa-help">Al registrar el pago mensual podrás ingresar los días trabajados y el bruto se calculará automáticamente.</div>
                   </div>
                 </div>
 
