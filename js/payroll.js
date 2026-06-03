@@ -343,7 +343,32 @@ function liquidar(opts){
   //   Costo total empresa: C = D = $boleta.
 
   if(esHonorarios){
-    var montoBase    = sueldoBase + comisiones + otrosImponibles + otrosNoImponibles;
+    // Modalidad determina cómo se arma el monto base.
+    //   'mensual' — monto pactado por mes (sueldoBase).
+    //   'diario'  — tarifa diaria × días trabajados (opts.diasTrabajados).
+    // Compatibilidad hacia atrás: si modalidad='diario' pero el caller no
+    // pasó diasTrabajados, usamos sueldoBase (workflow viejo del modal).
+    var modalidadHon   = worker.honorariosModalidad || 'mensual';
+    var tarifaDiaria   = worker.honorariosTarifaDiaria || 0;
+    var diasTrabajados = opts.diasTrabajados || 0;
+    var brutoHonorarios;
+    if(modalidadHon === 'diario'){
+      if(diasTrabajados > 0){
+        // Camino nuevo (Bloque 2 en adelante): motor calcula tarifa × días.
+        brutoHonorarios = diasTrabajados * tarifaDiaria;
+      } else if(sueldoBase > 0){
+        // Compat: caller viejo (modal pre-Bloque 2) inyectó días × tarifa
+        // dentro de sueldoBase. Lo usamos tal cual.
+        brutoHonorarios = sueldoBase;
+      } else {
+        // Sin días y sin sueldoBase — caso "tarjeta referencial sin datos".
+        // Devuelve 0; la UI lo manejará mostrando la tarifa diaria.
+        brutoHonorarios = 0;
+      }
+    } else {
+      brutoHonorarios = sueldoBase;
+    }
+    var montoBase    = brutoHonorarios + comisiones + otrosImponibles + otrosNoImponibles;
     var acuerdo      = worker.honorariosAcuerdo      || 'bruto';
     var quienRetiene = worker.honorariosQuienRetiene || 'trabajador';
     var tasa         = honRetRate / 100;
@@ -435,13 +460,17 @@ function liquidar(opts){
       esHonorarios: true,
       snapshot: _snapshotSnap(worker, biz, p, sueldoBase, afpRate),
       haberes: {
-        sueldoBase:            _round(sueldoBase),
+        sueldoBase:            _round(brutoHonorarios),
         gratificacion:         0,
         gratificacionEtiqueta: 'No aplica (honorarios)',
         comisiones:            _round(comisiones),
         otrosImponibles:       _round(otrosImponibles),
         otrosNoImponibles:     _round(otrosNoImponibles),
         totalHaberes:          _round(montoBase),
+        // Honorarios — campos de trazabilidad propios de la modalidad
+        modalidadHonorarios:   modalidadHon,
+        tarifaDiaria:          modalidadHon === 'diario' ? _round(tarifaDiaria) : 0,
+        diasTrabajados:        modalidadHon === 'diario' ? diasTrabajados : 0,
       },
       imponible: { bruto: _round(montoBase), topePesos: 0, topeAplicado: false, imponibleFinal: 0, imponibleCes: 0 },
       descuentos: {
@@ -616,7 +645,7 @@ function liquidar(opts){
 
 // Snapshot mínimo de parámetros usados — para preservar la liquidación si después cambian los datos.
 function _snapshotSnap(worker, biz, p, sueldoBase, afpRate){
-  return {
+  var snap = {
     sueldoBaseUsado: sueldoBase,
     contrato:        worker.contrato,
     jornada:         worker.jornada,
@@ -635,6 +664,16 @@ function _snapshotSnap(worker, biz, p, sueldoBase, afpRate){
     topeUF:          p.topeUF,
     topeCesUF:       p.topeCesUF,
   };
+  // Trazabilidad de honorarios: la modalidad y tarifa al momento del cálculo
+  // pueden cambiar después en la ficha; el snapshot las congela.
+  if(worker.contrato === 'honorarios'){
+    snap.honorariosModalidad    = worker.honorariosModalidad || 'mensual';
+    snap.honorariosTarifaDiaria = worker.honorariosTarifaDiaria || 0;
+    snap.honorariosAcuerdo      = worker.honorariosAcuerdo || 'bruto';
+    snap.honorariosQuienRetiene = worker.honorariosQuienRetiene || 'trabajador';
+    snap.honorariosRetencion    = p.honorariosRetencion;
+  }
+  return snap;
 }
 
 

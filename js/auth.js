@@ -122,7 +122,8 @@ function finishOb(){
   const rubro = document.getElementById('ob-rubro').value;
   const grat  = document.getElementById('ob-grat').value;
   const imm   = parseFloat(document.getElementById('ob-imm').value)||500000;
-  const tope  = parseFloat(document.getElementById('ob-tope').value)||2971285;
+  const topeUF    = parseFloat(document.getElementById('ob-tope-uf').value)    || 90.0;
+  const topeCesUF = parseFloat(document.getElementById('ob-tope-ces-uf').value)|| 135.2;
   const uf    = parseFloat(document.getElementById('ob-uf').value)||37500;
   const afpRates = {
     Habitat:  parseFloat(document.getElementById('afp-habitat').value)||10.58,
@@ -141,7 +142,7 @@ function finishOb(){
     id: Date.now().toString(),
     name, rut, rubro, grat,
     modules: {...mods},
-    params: { imm, tope, uf, afpRates, cesantia },
+    params: { imm, topeUF, topeCesUF, uf, afpRates, cesantia },
     workers: [],
     createdAt: new Date().toISOString(),
   };
@@ -152,6 +153,29 @@ function finishOb(){
 
   document.getElementById('onboarding').classList.add('gone');
   initApp();
+}
+
+// Exporta todo el almacenamiento (db) a un archivo JSON descargable.
+// Simétrico con handleRestore: lo que esta función produce, handleRestore lo
+// importa de vuelta. No pide PIN — exportar es leer datos propios, no destructivo.
+function exportData(){
+  try {
+    var contenido = JSON.stringify(db, null, 2);
+    var blob = new Blob([contenido], { type: 'application/json' });
+    var url  = URL.createObjectURL(blob);
+    var fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    var link = document.createElement('a');
+    link.href     = url;
+    link.download = 'nomi-respaldo-' + fecha + '.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast('Respaldo descargado');
+  } catch(e) {
+    console.error('exportData error:', e);
+    toast('No se pudo generar el respaldo');
+  }
 }
 
 function handleRestore(){

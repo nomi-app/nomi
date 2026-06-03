@@ -49,6 +49,31 @@ function _remIniciales(nombre){
   return (nombre || '?').split(' ').slice(0, 2).map(function(x){ return x[0]; }).join('').toUpperCase();
 }
 
+// ── Helpers de lenguaje natural ──
+// Unen listas con coma y "y" final, como una persona escribiría:
+//   ['Ana']                        → 'Ana'
+//   ['Ana', 'Beto']                → 'Ana y Beto'
+//   ['Ana', 'Beto', 'Carla']       → 'Ana, Beto y Carla'
+function _listarNombres(arr){
+  if(!arr || !arr.length) return '';
+  if(arr.length === 1) return arr[0];
+  if(arr.length === 2) return arr[0] + ' y ' + arr[1];
+  return arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1];
+}
+
+// Variante para [{nombre, motivo}]:
+//   [{nombre:'Ana', motivo:'sin AFP'}]                      → 'Ana (sin AFP)'
+//   [{nombre:'Ana', motivo:'sin AFP'}, {nombre:'Beto', ...}] → 'Ana (sin AFP) y Beto (...)'
+function _listarDetalle(arr){
+  if(!arr || !arr.length) return '';
+  var items = arr.map(function(f){ return f.nombre + ' (' + f.motivo + ')'; });
+  return _listarNombres(items);
+}
+
+// Concordancia de "trabajador(es)" según número.
+function _palabraTrabajador(n){ return n === 1 ? 'trabajador' : 'trabajadores'; }
+function _palabraLiquidacion(n){ return n === 1 ? 'liquidación' : 'liquidaciones'; }
+
 // ════════════════════════════════
 // RENDER PRINCIPAL
 // ════════════════════════════════
@@ -127,12 +152,21 @@ function renderRemuneraciones(){
       : '<span class="badge" style="font-size:10px">Pendiente</span>';
 
     var esHon = w.contrato === 'honorarios';
+    var modHon = esHon ? (w.honorariosModalidad || 'mensual') : null;
 
     // Etiqueta y monto referencial para tarjetas pendientes
     var pendienteMonto, pendienteLabel;
-    if(esHon){
-      // Para pendientes honorarios mostramos el monto de la boleta (no el sueldoBase crudo),
-      // que en escenarios C/D es la inversa. Usamos liquidar() en modo "ligero" para esto.
+    if(esHon && modHon === 'diario'){
+      // Honorarios diario sin liquidación todavía: no sabemos los días.
+      // Mostramos la tarifa diaria como referencia (con la etiqueta correcta
+      // según el acuerdo: bruto = "tarifa bruta", líquido = "tarifa líquida").
+      pendienteMonto = w.honorariosTarifaDiaria || 0;
+      pendienteLabel = (w.honorariosAcuerdo === 'liquido')
+        ? 'tarifa diaria (líquido)'
+        : 'tarifa diaria';
+    } else if(esHon){
+      // Honorarios mensual: liquidar() en modo "ligero" para obtener el monto
+      // de la boleta (que en escenarios C/D es la inversa del monto pactado).
       var refMonto = w.sueldoBase || 0;
       var refLabel = 'monto referencial';
       try {
@@ -212,6 +246,10 @@ function renderRemuneraciones(){
 // La versión placeholder que vivía aquí fue retirada en el barrido del Paso 2.
 
 // Liquidar todos los pendientes del mes.
+// Flujo:
+//   1. Clasificamos quiénes se pueden liquidar y quiénes no (sin tocar nada).
+//   2. Mostramos un modal de confirmación con el detalle.
+//   3. Sólo si el usuario confirma, ejecutamos las liquidaciones.
 function remLiquidarTodos(){
   var biz = getBiz();
   if(!biz) return;
@@ -221,25 +259,78 @@ function remLiquidarTodos(){
   var pendientes = status.items.filter(function(i){ return i.status === 'pendiente'; });
   if(pendientes.length === 0){ toast('No hay pendientes'); return; }
 
-  var liquidados = 0;
-  var fallidos = [];
-
+  // ── Paso 1: clasificación (sin efectos) ──
+  var liquidables = [];
+  var preFallidos = [];
   pendientes.forEach(function(item){
     var w = item.worker;
-    // Validación: necesita sueldo base y, si es dependiente, AFP
     var esDependiente = w.contrato !== 'honorarios';
+    var esHonDiario   = w.contrato === 'honorarios' && (w.honorariosModalidad || 'mensual') === 'diario';
+
+    if(esHonDiario){
+      preFallidos.push({ nombre: w.nombre, motivo: 'requiere ingresar días manualmente' });
+      return;
+    }
     if(!w.sueldoBase || w.sueldoBase <= 0){
-      fallidos.push({ nombre: w.nombre, motivo: 'sin sueldo base' });
+      preFallidos.push({ nombre: w.nombre, motivo: 'sin sueldo base' });
       return;
     }
     if(esDependiente && !w.afp){
-      fallidos.push({ nombre: w.nombre, motivo: 'falta AFP' });
+      preFallidos.push({ nombre: w.nombre, motivo: 'falta AFP' });
       return;
     }
     if(esDependiente && !w.salud){
-      fallidos.push({ nombre: w.nombre, motivo: 'falta previsión de salud' });
+      preFallidos.push({ nombre: w.nombre, motivo: 'falta previsión de salud' });
       return;
     }
+    liquidables.push(w);
+  });
+
+  // ── Caso A: nadie se puede liquidar ──
+  if(liquidables.length === 0){
+    var cuerpoNada;
+    if(preFallidos.length === 1){
+      // Personalizamos cuando es uno solo: queda mucho más natural.
+      var f = preFallidos[0];
+      cuerpoNada = f.nombre + ' no puede procesarse automáticamente: ' + f.motivo + '. Ábrelo desde la lista para liquidarlo manualmente.';
+    } else {
+      cuerpoNada = 'Ninguno de los pendientes puede procesarse automáticamente: ' + _listarDetalle(preFallidos) + '. Abre cada uno desde la lista para liquidarlo manualmente.';
+    }
+    showConfirmModal('Nada para liquidar en lote', cuerpoNada, function(){ closeConfirmModal(); });
+    var abNada = document.getElementById('confirm-action-btn');
+    if(abNada){ abNada.textContent = 'Entendido'; abNada.style.background = 'var(--accent)'; abNada.style.borderColor = 'var(--accent)'; }
+    return;
+  }
+
+  // ── Caso B: hay liquidables. Pedir confirmación previa con el detalle ──
+  var n = liquidables.length;
+  var nombresOk = _listarNombres(liquidables.map(function(w){ return w.nombre; }));
+  var verbo = n === 1 ? 'Se generará' : 'Se generarán';
+  var cuerpo = verbo + ' ' + n + ' ' + _palabraLiquidacion(n) + ' para ' + nombresOk + '.';
+  if(preFallidos.length > 0){
+    cuerpo += ' Quedará' + (preFallidos.length === 1 ? '' : 'n') + ' fuera por datos incompletos: ' + _listarDetalle(preFallidos) + '.';
+  }
+  cuerpo += ' Podrás revisar y editar cada liquidación después.';
+
+  showConfirmModal('Liquidar pendientes', cuerpo, function(){
+    _remEjecutarLiquidarTodos(liquidables, preFallidos);
+  });
+  var ab = document.getElementById('confirm-action-btn');
+  if(ab){
+    ab.textContent = 'Generar liquidaciones';
+    ab.style.background = 'var(--accent)';
+    ab.style.borderColor = 'var(--accent)';
+  }
+}
+
+// Ejecutor real del batch — sólo se llama cuando el usuario confirma.
+function _remEjecutarLiquidarTodos(liquidables, preFallidos){
+  var biz = getBiz();
+  if(!biz) return;
+  var liquidados = 0;
+  var erroresCalc = [];
+
+  liquidables.forEach(function(w){
     try {
       var liq = liquidar({ worker: w, biz: biz, periodo: _remPeriodo });
       // Guardado directo sin pasar por savePayroll (que pediría PIN si existiera);
@@ -252,28 +343,33 @@ function remLiquidarTodos(){
       biz.payrolls[_remPeriodo].workers[w.id] = liq;
       liquidados++;
     } catch(err){
-      fallidos.push({ nombre: w.nombre, motivo: 'error de cálculo' });
+      erroresCalc.push({ nombre: w.nombre, motivo: 'error de cálculo' });
     }
   });
 
   save(db);
   renderRemuneraciones();
 
-  // Resumen al usuario
-  if(fallidos.length === 0){
-    toast('Se liquidaron ' + liquidados + ' trabajador' + (liquidados !== 1 ? 'es' : ''));
-  } else {
-    var detalle = fallidos.map(function(f){ return f.nombre + ' (' + f.motivo + ')'; }).join(', ');
-    showConfirmModal(
-      'Liquidación parcial',
-      'Se liquidaron ' + liquidados + ' de ' + pendientes.length + ' trabajadores. ' +
-      'Quedaron pendientes por datos incompletos: ' + detalle + '.',
-      function(){ closeConfirmModal(); }
-    );
-    // Ocultar el botón cancelar y dejar sólo "Entendido"
-    var actionBtn = document.getElementById('confirm-action-btn');
-    if(actionBtn) actionBtn.textContent = 'Entendido';
+  var totalFallidos = preFallidos.concat(erroresCalc);
+  if(totalFallidos.length === 0){
+    var verboOk = liquidados === 1 ? 'Se liquidó a' : 'Se liquidaron';
+    toast(verboOk + ' ' + liquidados + ' ' + _palabraTrabajador(liquidados));
+    return;
   }
+  // Hubo casos no procesados (preFallidos o erroresCalc) — informar.
+  var total = liquidados + totalFallidos.length;
+  var verboMix = liquidados === 1 ? 'Se liquidó a' : 'Se liquidaron';
+  var fraseFallidos = totalFallidos.length === 1
+    ? 'Quedó pendiente: ' + _listarDetalle(totalFallidos)
+    : 'Quedaron pendientes: ' + _listarDetalle(totalFallidos);
+  showConfirmModal(
+    'Resumen de la liquidación',
+    verboMix + ' ' + liquidados + ' de ' + total + ' ' + _palabraTrabajador(total) + '. ' +
+    fraseFallidos + '.',
+    function(){ closeConfirmModal(); }
+  );
+  var ab2 = document.getElementById('confirm-action-btn');
+  if(ab2){ ab2.textContent = 'Entendido'; ab2.style.background = 'var(--accent)'; ab2.style.borderColor = 'var(--accent)'; }
 }
 
 function remCerrar(){

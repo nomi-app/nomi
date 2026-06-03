@@ -87,13 +87,25 @@ function openLiquidacion(workerId, periodo){
   var secDias = document.getElementById('lq-section-dias');
   if(secDias) secDias.style.display = (esHon && honMod === 'diario') ? 'block' : 'none';
 
-  // Poblar tarifa diaria si aplica
+  // En honorarios diario el bruto no se ingresa: se calcula desde tarifa × días.
+  // Ocultamos el campo lq-sueldo para que no haya dos lugares donde ingresar el mismo dato.
+  var sueldoField = document.getElementById('lq-sueldo').closest('.field');
+  if(sueldoField) sueldoField.style.display = (esHon && honMod === 'diario') ? 'none' : '';
+
+  // Poblar tarifa diaria y etiquetas según el tipo de acuerdo
   if(esHon && honMod === 'diario'){
     var tarifaLabel = document.getElementById('lq-hon-tarifa-label');
     if(tarifaLabel){
       var tarifa = w.honorariosTarifaDiaria || 0;
       tarifaLabel.textContent = '$' + Math.round(tarifa).toLocaleString('es-CL');
     }
+    // Etiquetas dinámicas: "bruto" o "líquido" según el acuerdo
+    var acDia   = w.honorariosAcuerdo || 'bruto';
+    var esLiqDia = acDia === 'liquido';
+    var tarTit = document.getElementById('lq-hon-tarifa-titulo');
+    var totTit = document.getElementById('lq-hon-total-titulo');
+    if(tarTit) tarTit.textContent = esLiqDia ? 'Tarifa diaria pactada (líquido)' : 'Tarifa diaria pactada (bruto)';
+    if(totTit) totTit.textContent = esLiqDia ? 'Líquido del mes'                  : 'Bruto del mes';
     // Si hay liquidación existente, restaurar días; si no, resetear a 0
     var diasInp = document.getElementById('lq-hon-dias');
     if(diasInp){
@@ -108,7 +120,21 @@ function openLiquidacion(workerId, periodo){
   document.getElementById('lq-section-comisiones').style.display = esHon ? 'none' : '';
   document.getElementById('lq-section-otros-imp').style.display  = esHon ? 'none' : '';
   document.getElementById('lq-section-no-imp').style.display     = esHon ? 'none' : '';
-  document.getElementById('lq-titulo-bruto').textContent         = esHon ? 'Monto bruto del mes' : 'Sueldo base';
+
+  // Etiqueta del campo principal:
+  //   - dependientes:        "Sueldo base"
+  //   - honorarios bruto:    "Monto bruto del mes"
+  //   - honorarios líquido:  "Monto líquido del mes"
+  // (En diario el campo está oculto, así que esto sólo afecta a mensual.)
+  var tituloBruto = document.getElementById('lq-titulo-bruto');
+  if(tituloBruto){
+    if(!esHon){
+      tituloBruto.textContent = 'Sueldo base';
+    } else {
+      var acMes = w.honorariosAcuerdo || 'bruto';
+      tituloBruto.textContent = acMes === 'liquido' ? 'Monto líquido del mes' : 'Monto bruto del mes';
+    }
+  }
 
   // Botón eliminar visible sólo si ya existía
   document.getElementById('lq-delete-btn').style.display = _liqExistia ? '' : 'none';
@@ -228,24 +254,30 @@ function _readNoImp(){
 function recalcLiquidacion(){
   if(!_liqWorker) return;
   var biz = getBiz();
-  var sueldoBase = parseFloat(document.getElementById('lq-sueldo').value) || 0;
   var comisiones = parseFloat(document.getElementById('lq-comisiones').value) || 0;
   var otrosImp   = parseFloat(document.getElementById('lq-otros-imp').value) || 0;
   var noImp      = _readNoImp();
 
-  var r = liquidar({
+  // Honorarios diario: el motor calcula bruto = tarifa × días internamente.
+  // No leemos lq-sueldo (está oculto). Pasamos sólo diasTrabajados.
+  var esHonDiario = _liqWorker.contrato === 'honorarios'
+                    && (_liqWorker.honorariosModalidad || 'mensual') === 'diario';
+  var opts = {
     worker: _liqWorker, biz: biz, periodo: _liqPeriodo,
-    sueldoBase: sueldoBase, comisiones: comisiones,
-    otrosImponibles: otrosImp, otrosNoImponibles: noImp.total,
-  });
-  r.haberes.noImponiblesBreakdown = noImp.breakdown;
-
-  // Guardar días trabajados en la liquidación (honorarios diarios)
-  if(_liqWorker.contrato === 'honorarios' && (_liqWorker.honorariosModalidad || 'mensual') === 'diario'){
+    comisiones: comisiones,
+    otrosImponibles: otrosImp,
+    otrosNoImponibles: noImp.total,
+  };
+  if(esHonDiario){
     var diasInp = document.getElementById('lq-hon-dias');
-    var dias = diasInp ? (parseFloat(diasInp.value) || 0) : 0;
-    if(dias > 0) r.haberes.diasTrabajados = dias;
+    opts.diasTrabajados = diasInp ? (parseFloat(diasInp.value) || 0) : 0;
+  } else {
+    opts.sueldoBase = parseFloat(document.getElementById('lq-sueldo').value) || 0;
   }
+
+  var r = liquidar(opts);
+  r.haberes.noImponiblesBreakdown = noImp.breakdown;
+  // (El motor ya persiste diasTrabajados, tarifaDiaria y modalidad en r.haberes desde Bloque 1.2)
 
   _liqResult = r;
   _renderLiquidacionResult(r);
@@ -319,10 +351,8 @@ function liqHonDiasChange(){
   var bruto  = dias * tarifa;
   var brutoCalcEl = document.getElementById('lq-hon-bruto-calc');
   if(brutoCalcEl) brutoCalcEl.textContent = '$' + Math.round(bruto).toLocaleString('es-CL');
-  // Poblar el campo de monto bruto principal
-  if(bruto > 0){
-    document.getElementById('lq-sueldo').value = bruto;
-  }
+  // Nota: ya no escribimos en lq-sueldo. El motor recibe diasTrabajados
+  // directamente desde recalcLiquidacion y calcula tarifa × días internamente.
   liqMarkDirty();
 }
 
@@ -357,6 +387,15 @@ function closeLiquidacionDesglose(){
 
 function guardarLiquidacion(){
   if(!_liqResult){ toast('No hay liquidación para guardar'); return; }
+  // Honorarios diario: requiere días > 0 para guardar
+  if(_liqWorker.contrato === 'honorarios'
+     && (_liqWorker.honorariosModalidad || 'mensual') === 'diario'
+     && (!_liqResult.haberes.diasTrabajados || _liqResult.haberes.diasTrabajados <= 0)){
+    toast('Ingresa los días trabajados antes de guardar');
+    var diasInp = document.getElementById('lq-hon-dias');
+    if(diasInp) diasInp.focus();
+    return;
+  }
   if(_liqExistia){
     // Editando: pedir confirmación primero. Después savePayroll pedirá PIN (si hay).
     showConfirmModal(

@@ -197,16 +197,18 @@ function discardParams(){
 function saveParams(){
   var biz = getBiz();
   if(!biz) return;
-  var imm  = parseFloat(document.getElementById('cfg-imm').value);
-  var tope = parseFloat(document.getElementById('cfg-tope').value);
-  var uf   = parseFloat(document.getElementById('cfg-uf').value);
-  var jc   = parseFloat(document.getElementById('cfg-jornada').value);
-  var ci   = parseFloat(document.getElementById('cfg-ces-indef').value);
-  var cf   = parseFloat(document.getElementById('cfg-ces-fijo').value);
-  if(imm)  biz.params.imm  = imm;
-  if(tope) biz.params.tope = tope;
-  if(uf)   biz.params.uf   = uf;
-  if(jc)   biz.params.jornadaCompleta = jc;
+  var imm      = parseFloat(document.getElementById('cfg-imm').value);
+  var topeUF   = parseFloat(document.getElementById('cfg-tope-uf').value);
+  var topeCesUF= parseFloat(document.getElementById('cfg-tope-ces-uf').value);
+  var uf       = parseFloat(document.getElementById('cfg-uf').value);
+  var jc       = parseFloat(document.getElementById('cfg-jornada').value);
+  var ci       = parseFloat(document.getElementById('cfg-ces-indef').value);
+  var cf       = parseFloat(document.getElementById('cfg-ces-fijo').value);
+  if(imm)       biz.params.imm       = imm;
+  if(topeUF)    biz.params.topeUF    = topeUF;
+  if(topeCesUF) biz.params.topeCesUF = topeCesUF;
+  if(uf)        biz.params.uf        = uf;
+  if(jc)        biz.params.jornadaCompleta = jc;
   biz.params.cesantia = { indefinido: ci || 0.6, fijo: cf || 3.0 };
   var honRet = parseFloat(document.getElementById('cfg-hon-ret').value);
   if(!isNaN(honRet) && honRet > 0) biz.params.honorariosRetencion = honRet;
@@ -248,7 +250,8 @@ function renderCfg(){
   var p = biz.params || {};
   document.getElementById('cfg-sub').textContent = biz.name;
   document.getElementById('cfg-imm').value   = p.imm   || 500000;
-  document.getElementById('cfg-tope').value  = p.tope  || 2971285;
+  document.getElementById('cfg-tope-uf').value     = p.topeUF    != null ? p.topeUF    : 90.0;
+  document.getElementById('cfg-tope-ces-uf').value = p.topeCesUF != null ? p.topeCesUF : 135.2;
   document.getElementById('cfg-uf').value    = p.uf    || 37500;
   document.getElementById('cfg-jornada').value = p.jornadaCompleta || 42;
   document.getElementById('cfg-ces-indef').value = p.cesantia ? p.cesantia.indefinido : 0.6;
@@ -276,4 +279,22 @@ function renderCfg(){
   resetParamsDirty();
   snapshotParams();
   renderCfgPinRow();
+  _cfgRefrescarTopeEq();
+}
+
+// Helper: recalcula y muestra el equivalente en pesos de los dos topes
+// usando la UF actual del input. Se llama al renderizar config y cada vez
+// que el usuario tipea en cualquiera de los tres campos (UF, tope, tope-ces).
+function _cfgRefrescarTopeEq(){
+  var ufEl       = document.getElementById('cfg-uf');
+  var topeEl     = document.getElementById('cfg-tope-uf');
+  var topeCesEl  = document.getElementById('cfg-tope-ces-uf');
+  var eqTope     = document.getElementById('cfg-tope-eq');
+  var eqTopeCes  = document.getElementById('cfg-tope-ces-eq');
+  if(!ufEl || !topeEl || !topeCesEl || !eqTope || !eqTopeCes) return;
+  var uf         = parseFloat(ufEl.value)      || 0;
+  var tope       = parseFloat(topeEl.value)    || 0;
+  var topeCes    = parseFloat(topeCesEl.value) || 0;
+  eqTope.textContent    = '$' + Math.round(tope    * uf).toLocaleString('es-CL');
+  eqTopeCes.textContent = '$' + Math.round(topeCes * uf).toLocaleString('es-CL');
 }

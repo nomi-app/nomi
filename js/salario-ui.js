@@ -433,17 +433,28 @@ function updateHonPreview(){
   var biz = (typeof getBiz === 'function') ? getBiz() : null;
   if(!biz){ box.style.display = 'none'; return; }
 
+  // Worker fantasma: declara modalidad y tarifa explícitas, para que el motor
+  // tome la rama correcta. En diario, pasamos diasTrabajados=1 al motor y
+  // tarifaDiaria adentro del fantasma → el preview muestra "por día".
+  // En mensual, montoBase va como sueldoBase como hasta ahora.
   var workerFantasma = {
     id: 'preview',
     contrato: 'honorarios',
-    sueldoBase: montoBase,
+    honorariosModalidad:    modalidad,
     honorariosAcuerdo:      getHonAcuerdoSel(),
     honorariosQuienRetiene: getHonRetencionSel(),
   };
+  var opts = { worker: workerFantasma, biz: biz };
+  if(modalidad === 'diario'){
+    workerFantasma.honorariosTarifaDiaria = montoBase;
+    opts.diasTrabajados = 1;
+  } else {
+    workerFantasma.sueldoBase = montoBase;
+  }
 
   var liq;
   try {
-    liq = liquidar({ worker: workerFantasma, biz: biz });
+    liq = liquidar(opts);
   } catch(e){
     box.style.display = 'none';
     return;

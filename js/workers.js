@@ -46,7 +46,7 @@ function openWorkerForm(workerId = null){
     document.getElementById('wf-sueldo').value = w.sueldoBase || '';
     document.getElementById('wf-afp').value = w.afp || Object.keys(rates)[0];
     document.getElementById('wf-salud').value = w.salud;
-    document.getElementById('wf-isapre-nombre').value = w.isapreNombre || '';
+    setIsapreNombre(w.isapreNombre);
     document.getElementById('wf-isapre-moneda').value = w.isapreMoneda || 'pesos';
     document.getElementById('wf-isapre-monto').value = w.isapreMonto || '';
     document.getElementById('wf-grat').value = w.gratificacion || 'heredar';
@@ -107,11 +107,12 @@ function openWorkerForm(workerId = null){
 
 function clearWorkerForm(){
   ['wf-nombre','wf-rut','wf-wa','wf-email','wf-cargo','wf-horas','wf-sueldo','wf-liquido',
-   'wf-isapre-nombre','wf-isapre-monto',
+   'wf-isapre-monto','wf-isapre-otra-nombre',
    'wf-hon-mensual-monto','wf-hon-tarifa'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
+  setIsapreNombre('');   // resetea el dropdown y oculta el campo "otra"
   document.getElementById('wf-contrato').value = '';
   document.getElementById('wf-jornada').value = '';
   document.getElementById('wf-salud').value = '';
@@ -140,6 +141,7 @@ function clearWorkerForm(){
   onSaludChange();
   onRolChange();
   onIsapreMonedaChange();
+  if(typeof onHonModalidadChange === 'function') onHonModalidadChange();
 }
 
 function closeWorkerPanel(){
@@ -300,9 +302,9 @@ function onHonModalidadChange(){
 }
 
 function onHonMensualMontoChange(){
-  var monto = parseFloat(document.getElementById('wf-hon-mensual-monto').value) || 0;
-  var sueldoInp = document.getElementById('wf-sueldo');
-  if(sueldoInp) sueldoInp.value = monto;  // mantener sincronizado para saveWorker
+  // El handler ya no sincroniza con wf-sueldo. Después del fix de saveWorker
+  // (que ahora lee wf-hon-mensual-monto directamente para honorarios),
+  // ese sync era redundante y mantenía dos fuentes de verdad.
   if(typeof updateHonPreview === 'function') updateHonPreview();
 }
 
@@ -323,6 +325,95 @@ function onIsapreMonedaChange(){
   const label = document.getElementById('wf-isapre-monto-label');
   sign.textContent = val === 'uf' ? 'UF' : '$';
   label.textContent = val === 'uf' ? 'Monto del plan (UF)' : 'Monto del plan ($)';
+}
+
+// ── Isapres: dropdown con migración de texto libre antiguo ──
+// Las 7 isapres abiertas vigentes en Chile (traspaso Hito 3 §2.13).
+// El valor 'otra' habilita un input libre debajo, para isapres cerradas
+// (Banco Estado, Chuquicamata, Cruz del Norte, etc.) o nombres atípicos.
+var ISAPRES_ABIERTAS = ['Banmédica','Colmena','Consalud','Cruz Blanca','Nueva Masvida','Vida Tres','Esencial'];
+
+// Setea el campo isapre desde un nombre guardado. Tres caminos:
+//   - Vacío: limpia todo, oculta el campo libre.
+//   - Nombre en la lista oficial: selecciona esa opción del dropdown.
+//   - Nombre fuera de la lista (custom: texto libre antiguo, isapre cerrada,
+//     nombre tipeado en "Otra"): agrega una opción temporal al dropdown con
+//     ese nombre y la selecciona. Visualmente queda como una más; el campo
+//     libre permanece oculto. Las opciones temporales se reconstruyen al
+//     reabrir el formulario (no se acumulan entre sesiones).
+function setIsapreNombre(nombre){
+  var sel       = document.getElementById('wf-isapre-nombre');
+  var otraField = document.getElementById('wf-isapre-otra-field');
+  var otraInput = document.getElementById('wf-isapre-otra-nombre');
+  if(!sel || !otraField || !otraInput) return;
+  // Limpiar opciones temporales de aperturas anteriores (importante para
+  // que no se acumulen al cambiar entre trabajadores).
+  _limpiarIsapreCustom();
+  var n = (nombre || '').trim();
+  if(!n){
+    sel.value = '';
+    otraField.style.display = 'none';
+    otraInput.value = '';
+  } else if(ISAPRES_ABIERTAS.indexOf(n) !== -1){
+    sel.value = n;
+    otraField.style.display = 'none';
+    otraInput.value = '';
+  } else {
+    // Custom — agregar como opción temporal antes de "Otra (especificar)"
+    var opt = document.createElement('option');
+    opt.value = n;
+    opt.textContent = n;
+    opt.setAttribute('data-custom', 'true');
+    var otraOpt = sel.querySelector('option[value="otra"]');
+    if(otraOpt){
+      sel.insertBefore(opt, otraOpt);
+    } else {
+      sel.appendChild(opt);
+    }
+    sel.value = n;
+    otraField.style.display = 'none';
+    otraInput.value = '';
+  }
+}
+
+// Quita del select las opciones marcadas con data-custom="true".
+// Se llama desde setIsapreNombre antes de aplicar un nombre nuevo.
+function _limpiarIsapreCustom(){
+  var sel = document.getElementById('wf-isapre-nombre');
+  if(!sel) return;
+  var customs = sel.querySelectorAll('option[data-custom="true"]');
+  for(var i = 0; i < customs.length; i++){
+    customs[i].parentNode.removeChild(customs[i]);
+  }
+}
+
+// Devuelve el nombre de isapre actual del formulario:
+//   - Si el select tiene una isapre conocida, devuelve ese nombre.
+//   - Si está en "otra", devuelve el texto del input libre.
+//   - Si no hay nada seleccionado, devuelve ''.
+function getIsapreNombreActual(){
+  var sel = document.getElementById('wf-isapre-nombre');
+  if(!sel) return '';
+  if(sel.value === 'otra'){
+    var inp = document.getElementById('wf-isapre-otra-nombre');
+    return inp ? inp.value.trim() : '';
+  }
+  return sel.value;
+}
+
+// Handler del onchange del select de isapre.
+function onIsapreNombreChange(){
+  var sel       = document.getElementById('wf-isapre-nombre');
+  var otraField = document.getElementById('wf-isapre-otra-field');
+  var otraInput = document.getElementById('wf-isapre-otra-nombre');
+  if(!sel || !otraField) return;
+  if(sel.value === 'otra'){
+    otraField.style.display = 'block';
+    if(otraInput) otraInput.focus();
+  } else {
+    otraField.style.display = 'none';
+    if(otraInput) otraInput.value = '';
+  }
 }
 
 function onRolChange(){
@@ -364,9 +455,8 @@ function checkIMM(){
   const imm = biz.params?.imm || 500000;
   const sueldo = parseFloat(document.getElementById('wf-sueldo').value) || 0;
   const jornada = document.getElementById('wf-jornada').value;
-var jc_default = (biz.params && biz.params.jornadaCompleta) || 42;
-  var horas = parseFloat(document.getElementById('wf-horas').value) || jc_default;
   var jc = (biz.params && biz.params.jornadaCompleta) || 42;
+  var horas = parseFloat(document.getElementById('wf-horas').value) || jc;
   var immProporcional = jornada === 'parcial' ? Math.round(imm * horas / jc) : imm;
   const warnEl = document.getElementById('imm-warn');
   document.getElementById('imm-val').textContent = '$' + immProporcional.toLocaleString('es-CL');
@@ -392,7 +482,7 @@ function calcDesdeliquido(){
     horasSemanales:  parseFloat(document.getElementById('wf-horas').value) || biz.params.jornadaCompleta || 42,
     afp:             document.getElementById('wf-afp').value,
     salud:           document.getElementById('wf-salud').value,
-    isapreNombre:    document.getElementById('wf-isapre-nombre').value,
+    isapreNombre:    getIsapreNombreActual(),
     isapreMoneda:    document.getElementById('wf-isapre-moneda').value || 'pesos',
     isapreMonto:     parseFloat(document.getElementById('wf-isapre-monto').value) || 0,
     gratificacion:   document.getElementById('wf-grat').value || 'heredar',
@@ -501,10 +591,34 @@ function saveWorker(){
     document.getElementById('wf-jornada-err').classList.add('show');
     valid = false;
   }
-  if(!sueldo || sueldo <= 0){
-    document.getElementById('wf-sueldo').classList.add('error');
-    document.getElementById('wf-sueldo-err').classList.add('show');
-    valid = false;
+  // Validación de monto: depende del tipo de contrato porque cada uno usa
+  // un input distinto. Para honorarios el campo wf-sueldo está oculto y no
+  // se llena directamente — el monto vive en wf-hon-mensual-monto (mensual)
+  // o wf-hon-tarifa (diario).
+  if(isHon){
+    var honMod = document.getElementById('wf-hon-modalidad') ? document.getElementById('wf-hon-modalidad').value : 'mensual';
+    if(honMod === 'diario'){
+      var tarifa = parseFloat(document.getElementById('wf-hon-tarifa').value);
+      if(!tarifa || tarifa <= 0){
+        document.getElementById('wf-hon-tarifa').classList.add('error');
+        toast('Ingresa la tarifa diaria');
+        valid = false;
+      }
+    } else {
+      var montoMes = parseFloat(document.getElementById('wf-hon-mensual-monto').value);
+      if(!montoMes || montoMes <= 0){
+        document.getElementById('wf-hon-mensual-monto').classList.add('error');
+        toast('Ingresa el monto mensual de honorarios');
+        valid = false;
+      }
+    }
+  } else {
+    // Dependientes: el campo visible es wf-sueldo.
+    if(!sueldo || sueldo <= 0){
+      document.getElementById('wf-sueldo').classList.add('error');
+      document.getElementById('wf-sueldo-err').classList.add('show');
+      valid = false;
+    }
   }
   if(!isHon && !afp){
     document.getElementById('wf-afp').classList.add('error');
@@ -553,11 +667,13 @@ function saveWorker(){
     honorariosAcuerdo:       honorariosAcuerdo,
     honorariosQuienRetiene:  honorariosQuienRetiene,
     sueldoBase: (function(){
-      // Honorarios mensual: monto independiente, no se aplica piso legal.
+      // Honorarios mensual: monto independiente, viene de wf-hon-mensual-monto.
+      //   No se aplica piso legal (régimen 2da categoría, fuera del art. 44 CT).
       // Honorarios diario: el sueldoBase no aplica; el cálculo usa tarifaDiaria × días.
       //   Forzamos 0 para evitar arrastrar valores residuales del input wf-sueldo.
       if(isHon){
-        return (honorariosModalidad === 'diario') ? 0 : sueldo;
+        if(honorariosModalidad === 'diario') return 0;
+        return parseFloat(document.getElementById('wf-hon-mensual-monto').value) || 0;
       }
       var modo = getSalarioModoSel();
       if(modo === 'anclado' && typeof pisoLegal === 'function'){
@@ -572,7 +688,7 @@ function saveWorker(){
     haberesRecurrentes: isHon ? []   : getHaberesRecurrentes(),
     afp:                isHon ? null : afp,
     salud:              isHon ? null : salud,
-    isapreNombre:       isHon ? '' : document.getElementById('wf-isapre-nombre').value.trim(),
+    isapreNombre:       isHon ? '' : getIsapreNombreActual(),
     isapreMoneda:       isHon ? null : document.getElementById('wf-isapre-moneda').value,
     isapreMonto:        isHon ? 0 : (parseFloat(document.getElementById('wf-isapre-monto').value) || 0),
     gratificacion:      isHon ? null : document.getElementById('wf-grat').value,
@@ -615,20 +731,6 @@ function refreshAfpSelector(){
     if(name === cur) opt.selected = true;
     sel.appendChild(opt);
   });
-}
-
-// ── DELETE WORKER — fixed with event delegation ──
-function deleteWorker(id){
-  const biz = getBiz();
-  if(!biz) return;
-  const w = biz.workers.find(w => w.id === id);
-  if(!w) return;
-  if(!confirm(`¿Eliminar a ${w.nombre}? Esta acción no se puede deshacer.`)) return;
-  biz.workers = biz.workers.filter(w => w.id !== id);
-  save(db);
-  renderWorkerList();
-  renderDash();
-  toast('Trabajador eliminado');
 }
 
 // ── RENDER WORKER LIST ──
