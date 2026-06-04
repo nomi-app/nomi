@@ -1132,14 +1132,14 @@
         background:var(--danger-dim);
         display:flex;align-items:center;justify-content:center;
         flex-shrink:0;font-size:16px;
-      ">⚠</div>
+      " id="confirm-icon">⚠</div>
       <div>
         <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px" id="confirm-title">¿Eliminar trabajador?</div>
         <div style="font-size:13px;color:var(--text2);line-height:1.5" id="confirm-body">Esta acción es irreversible. Una vez eliminado, no podrás recuperar los datos de este trabajador.</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+      <button class="btn btn-secondary" id="confirm-cancel-btn" onclick="closeConfirmModal()">Cancelar</button>
       <button class="btn btn-danger" id="confirm-action-btn" style="background:var(--danger);color:#fff;border-color:var(--danger)">Eliminar</button>
     </div>
   </div>

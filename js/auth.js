@@ -365,7 +365,9 @@ function requestPinForDelete(){
         if(db.businesses.length === 0){ startNewBiz(); }
         else { renderAll(); go('inicio'); }
       });
-    }
+    },
+    'danger',
+    'Eliminar'
   );
 }
 
@@ -388,7 +390,9 @@ function delWorker(id){
         renderDash();
         toast('Trabajador eliminado');
       });
-    }
+    },
+    'danger',
+    'Eliminar'
   );
 }
 

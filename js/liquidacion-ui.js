@@ -170,16 +170,14 @@ function closeLiquidacion(force){
       function(){
         closeConfirmModal();
         closeLiquidacion(true);
-      }
+      },
+      'danger',
+      'Descartar y cerrar'
     );
-    var ab = document.getElementById('confirm-action-btn');
-    if(ab){ ab.textContent = 'Descartar y cerrar'; ab.style.background = 'var(--danger)'; ab.style.borderColor = 'var(--danger)'; }
     return;
   }
   document.getElementById('lq-panel').style.display = 'none';
   _liqWorker = null; _liqPeriodo = null; _liqDirty = false; _liqResult = null; _liqOtros = [];
-  var ab2 = document.getElementById('confirm-action-btn');
-  if(ab2){ ab2.textContent = 'Eliminar'; ab2.style.background = 'var(--danger)'; ab2.style.borderColor = 'var(--danger)'; }
 }
 
 
@@ -404,10 +402,10 @@ function guardarLiquidacion(){
       function(){
         closeConfirmModal();
         _ejecutarGuardado();
-      }
+      },
+      'primary',
+      'Confirmar cambios'
     );
-    var ab = document.getElementById('confirm-action-btn');
-    if(ab){ ab.textContent = 'Confirmar cambios'; ab.style.background = 'var(--accent)'; ab.style.borderColor = 'var(--accent)'; }
   } else {
     _ejecutarGuardado();
   }
@@ -437,7 +435,9 @@ function eliminarLiquidacion(){
           closeLiquidacion(true);
         }
       });
-    }
+    },
+    'danger',
+    'Eliminar'
   );
 }
 

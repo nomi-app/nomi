@@ -49,9 +49,52 @@ applyTheme();
 // ════════════════════════════════
 let _confirmCb = null;
 
-function showConfirmModal(title, body, onConfirm){
+function showConfirmModal(title, body, onConfirm, variant, actionLabel){
+  variant = variant || 'danger';
+  if(actionLabel == null){
+    if(variant === 'neutral')      actionLabel = 'Entendido';
+    else if(variant === 'primary') actionLabel = 'Confirmar';
+    else                           actionLabel = 'Eliminar';
+  }
+
   document.getElementById('confirm-title').textContent = title;
   document.getElementById('confirm-body').textContent  = body;
+
+  var icon = document.getElementById('confirm-icon');
+  if(icon){
+    if(variant === 'danger'){
+      icon.style.background = 'var(--danger-dim)';
+      icon.textContent      = '⚠';
+    } else if(variant === 'primary'){
+      icon.style.background = 'var(--accent-dim)';
+      icon.textContent      = '?';
+    } else { // neutral
+      icon.style.background = 'var(--bg3)';
+      icon.textContent      = 'ℹ';
+    }
+  }
+
+  var btn = document.getElementById('confirm-action-btn');
+  if(btn){
+    btn.removeAttribute('style');
+    if(variant === 'danger'){
+      btn.className         = 'btn btn-danger';
+      btn.style.background  = 'var(--danger)';
+      btn.style.borderColor = 'var(--danger)';
+      btn.style.color       = '#fff';
+    } else { // primary o neutral comparten estilo de botón; el ícono los diferencia
+      btn.className = 'btn btn-primary';
+    }
+    btn.textContent = actionLabel;
+  }
+
+  // Modales neutral son puramente informativos (la acción ya ocurrió o no hay nada que hacer):
+  // ocultar "Cancelar" porque sería engañoso — no deshace nada.
+  var cancelBtn = document.getElementById('confirm-cancel-btn');
+  if(cancelBtn){
+    cancelBtn.style.display = (variant === 'neutral') ? 'none' : '';
+  }
+
   _confirmCb = onConfirm;
   const ov = document.getElementById('confirm-overlay');
   ov.style.display = 'flex';

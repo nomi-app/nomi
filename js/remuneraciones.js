@@ -296,9 +296,7 @@ function remLiquidarTodos(){
     } else {
       cuerpoNada = 'Ninguno de los pendientes puede procesarse automáticamente: ' + _listarDetalle(preFallidos) + '. Abre cada uno desde la lista para liquidarlo manualmente.';
     }
-    showConfirmModal('Nada para liquidar en lote', cuerpoNada, function(){ closeConfirmModal(); });
-    var abNada = document.getElementById('confirm-action-btn');
-    if(abNada){ abNada.textContent = 'Entendido'; abNada.style.background = 'var(--accent)'; abNada.style.borderColor = 'var(--accent)'; }
+    showConfirmModal('Nada para liquidar en lote', cuerpoNada, function(){ closeConfirmModal(); }, 'neutral', 'Entendido');
     return;
   }
 
@@ -314,13 +312,7 @@ function remLiquidarTodos(){
 
   showConfirmModal('Liquidar pendientes', cuerpo, function(){
     _remEjecutarLiquidarTodos(liquidables, preFallidos);
-  });
-  var ab = document.getElementById('confirm-action-btn');
-  if(ab){
-    ab.textContent = 'Generar liquidaciones';
-    ab.style.background = 'var(--accent)';
-    ab.style.borderColor = 'var(--accent)';
-  }
+  }, 'primary', 'Generar liquidaciones');
 }
 
 // Ejecutor real del batch — sólo se llama cuando el usuario confirma.
@@ -366,10 +358,10 @@ function _remEjecutarLiquidarTodos(liquidables, preFallidos){
     'Resumen de la liquidación',
     verboMix + ' ' + liquidados + ' de ' + total + ' ' + _palabraTrabajador(total) + '. ' +
     fraseFallidos + '.',
-    function(){ closeConfirmModal(); }
+    function(){ closeConfirmModal(); },
+    'neutral',
+    'Entendido'
   );
-  var ab2 = document.getElementById('confirm-action-btn');
-  if(ab2){ ab2.textContent = 'Entendido'; ab2.style.background = 'var(--accent)'; ab2.style.borderColor = 'var(--accent)'; }
 }
 
 function remCerrar(){

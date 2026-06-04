@@ -227,14 +227,19 @@ function saveParams(){
     var rep = aplicarReglasIMM(biz);
     save(db);
     if(rep.normalizados.length > 0){
-      var nombres = rep.normalizados.map(function(x){ return x.nombre; }).join(', ');
+      var n       = rep.normalizados.length;
+      var verbo   = n === 1 ? 'Se ajustó'   : 'Se ajustaron';
+      var pal     = _palabraTrabajador(n);                            // 'trabajador' | 'trabajadores'
+      var ancl    = n === 1 ? 'anclado'     : 'anclados';
+      var qued    = n === 1 ? 'quedaba'     : 'quedaban';
+      var nombres = _listarNombres(rep.normalizados.map(function(x){ return x.nombre; }));
       showConfirmModal(
         'Sueldos normalizados al nuevo mínimo',
-        'Se ajustaron ' + rep.normalizados.length + ' trabajador(es) anclados al mínimo que quedaban bajo el nuevo valor: ' + nombres + '.',
-        function(){ closeConfirmModal(); }
+        verbo + ' ' + n + ' ' + pal + ' ' + ancl + ' al mínimo que ' + qued + ' bajo el nuevo valor: ' + nombres + '.',
+        function(){ closeConfirmModal(); },
+        'neutral',
+        'Entendido'
       );
-      var ab = document.getElementById('confirm-action-btn');
-      if(ab) ab.textContent = 'Entendido';
     } else {
       toast('Parámetros guardados correctamente');
     }
