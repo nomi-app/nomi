@@ -147,6 +147,11 @@ function openLiquidacion(workerId, periodo){
   recalcLiquidacion();
 
   document.getElementById('lq-panel').style.display = 'block';
+
+  // 3.E.8 — Estado inicial del botón delegado al helper centralizado.
+  // Cubre liquidación nueva (habilita si hay algo que pagar), existente
+  // (deshabilitada hasta primer cambio) y honorarios diario sin días.
+  _liqActualizarBotonGuardar();
 }
 
 function _actualizarBotonGuardar(){
@@ -333,9 +338,53 @@ function _renderLiquidacionResult(r){
   }
 }
 
+// ─── 3.E.8 — Decisión "¿hay algo que pagar?" ──────────────────────────────
+// Este helper es el ÚNICO lugar donde vive la regla. Hoy sólo contempla el
+// caso de honorarios diario (requiere días > 0 para tener algo que pagar);
+// los demás contratos siempre devuelven null porque su "algo que pagar"
+// está implícito en el sueldo base o monto de boleta de la ficha.
+//
+// FUTURO — Integración con módulo de asistencia:
+// Cuando exista el control de asistencia (proyectado post-Hito 3), este
+// cuerpo se reemplaza por una consulta a las horas/días efectivamente
+// registrados en el período. Para TODOS los contratos. Si el trabajador
+// no tiene asistencia registrada, devolver una razón concreta tipo
+// "Sin asistencia registrada en este período".
+// ÚNICO punto a modificar para esa integración — no expandir esta lógica
+// a otros lugares del archivo.
+//
+// Devuelve: null si es liquidable, o string con la razón si no lo es
+// (el string se muestra como tooltip del botón).
+function _liqRazonNoLiquidable(){
+  if(!_liqWorker) return 'No hay trabajador cargado';
+  var esHon    = _liqWorker.contrato === 'honorarios';
+  var esDiario = esHon && (_liqWorker.honorariosModalidad || 'mensual') === 'diario';
+  if(esDiario){
+    var dias = (_liqResult && _liqResult.haberes) ? _liqResult.haberes.diasTrabajados : 0;
+    if(!dias || dias <= 0) return 'Ingresá los días trabajados para habilitar el guardado';
+  }
+  return null;
+}
+
+// Actualiza el botón "Guardar" del modal de liquidación según dos condiciones
+// independientes: (1) ¿hay algo que pagar? — _liqRazonNoLiquidable; (2) ¿hay
+// motivo para guardar? — liquidación nueva o existente con cambios.
+function _liqActualizarBotonGuardar(){
+  var btn = document.getElementById('lq-save-btn');
+  if(!btn) return;
+  var razon      = _liqRazonNoLiquidable();
+  var liquidable = !razon;
+  var habilitado = liquidable && (!_liqExistia || _liqDirty);
+  setBotonGuardar('lq-save-btn', habilitado);
+  // Tooltip sólo cuando la razón es "no hay algo que pagar". Cuando el botón
+  // está deshabilitado por "sin cambios todavía", el gris ya lo comunica.
+  btn.title = (!habilitado && razon) ? razon : '';
+}
+
 function liqMarkDirty(){
   _liqDirty = true;
   recalcLiquidacion();
+  _liqActualizarBotonGuardar();
 }
 
 // Cuando el usuario cambia los días trabajados (honorarios diario),

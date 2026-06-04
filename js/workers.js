@@ -103,6 +103,11 @@ function openWorkerForm(workerId = null){
 
   document.getElementById('w-panel').style.display = 'block';
   setTimeout(() => document.getElementById('wf-nombre').focus(), 100);
+
+  // 3.E.8 — Botón "Guardar" parte deshabilitado; el listener delegado
+  // lo habilita al primer cambio real del usuario.
+  setBotonGuardar('wd-save-btn', false);
+  _wdBindDirtyListener();
 }
 
 function clearWorkerForm(){
@@ -145,8 +150,30 @@ function clearWorkerForm(){
 }
 
 function closeWorkerPanel(){
+  _wdUnbindDirtyListener();
   document.getElementById('w-panel').style.display = 'none';
   editingWorkerId = null;
+}
+
+// ── Dirty tracking del formulario de ficha ──
+// Listener delegado sobre #w-panel: cualquier input/change que burbujee desde
+// adentro habilita "Guardar". Setear .value por JS no dispara estos eventos,
+// así que la población inicial en modo edit no marca dirty falsamente.
+function _wdOnDirty(){
+  setBotonGuardar('wd-save-btn', true);
+}
+function _wdBindDirtyListener(){
+  var panel = document.getElementById('w-panel');
+  if(!panel) return;
+  _wdUnbindDirtyListener(); // seguridad: evitar duplicados
+  panel.addEventListener('input',  _wdOnDirty);
+  panel.addEventListener('change', _wdOnDirty);
+}
+function _wdUnbindDirtyListener(){
+  var panel = document.getElementById('w-panel');
+  if(!panel) return;
+  panel.removeEventListener('input',  _wdOnDirty);
+  panel.removeEventListener('change', _wdOnDirty);
 }
 
 // ── RUT validation for worker form ──

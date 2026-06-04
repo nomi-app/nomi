@@ -19,6 +19,17 @@ function toast(msg){
   _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2600);
 }
 
+// Helper global: habilita/deshabilita un botón "Guardar" y sincroniza el
+// estado visual (opacidad + cursor). Usado por formularios con dirty tracking
+// — Configuración, Ficha del trabajador, Modal de liquidación.
+function setBotonGuardar(btnId, habilitado){
+  var btn = document.getElementById(btnId);
+  if(!btn) return;
+  btn.disabled = !habilitado;
+  btn.style.opacity = habilitado ? '1' : '.4';
+  btn.style.cursor  = habilitado ? 'pointer' : 'not-allowed';
+}
+
 // ════════════════════════════════
 // STORAGE
 // ════════════════════════════════
